@@ -1,6 +1,6 @@
 # Word Quiz 기술 스펙
 
-> 상태: v1.3 (확정) · 작성일: 2026-09-20 · 최종 수정: 2026-09-20  
+> 상태: v1.4 (확정) · 작성일: 2026-09-20 · 최종 수정: 2026-09-20  
 > 기준 문서: `docs/PRD.md` v1.3, `docs/word-quiz-mockup.html`(영어 UI, 컨펌 완료)  
 > 범위: **어떻게 만드는가**. 제품 요구사항은 PRD가, 작업 순서는 별도 실행 계획 문서가 다룬다.
 
@@ -70,7 +70,8 @@ word-quiz/
 │  │  ├─ app.ts              Express 앱 조립, 미들웨어
 │  │  ├─ routes/             databases, session, rounds, words, settings
 │  │  ├─ services/           session, round, words (트랜잭션 단위 로직)
-│  │  └─ db/                 open.ts, migrations.ts, queries.ts
+│  │  ├─ errors.ts           AppError, SQLite 제약 오류 변환
+│  │  └─ db/                 open, migrations, transaction, names, catalog, sessions, queries
 │  ├─ cli/
 │  │  ├─ index.ts            인자 파싱, 종료 코드
 │  │  ├─ xlsx.ts             시트 읽기, 헤더 매핑
@@ -111,8 +112,9 @@ word-quiz/
 - DB 파일: `APP_HOME/data/*.db`. 리포트: `APP_HOME/reports/`. 백업: `APP_HOME/data/backup/`.
 - 언어는 파일명이 아니라 `meta` 테이블의 `language` 값이 기준이다.
 - `GET /api/databases`는 `data/`를 스캔해 각 파일을 **읽기 전용**으로 열고 `meta.language`와 단어 수를 읽는다. `meta`가 없거나 열리지 않는 파일은 목록에서 빼고 서버 콘솔에 경고를 남긴다.
-- DB 이름 규칙: `^[A-Za-z0-9_-]+\.db$`. 이 규칙에 맞고 **목록에 있는 이름**만 열 수 있다 (T9).
-- 이름 중복은 **대소문자를 무시하고** 판정한다 (T13). 스캔 결과에 대소문자만 다른 두 파일이 있으면 둘 다 목록에 넣되 서버 콘솔에 경고를 남긴다.
+- DB 이름 규칙: `^[A-Za-z0-9_-]{1,64}\.db$`이고 **Windows 예약 장치 이름**(`CON PRN AUX NUL COM1-9 LPT1-9`, 대소문자 무시)이 아니어야 한다(`con.db`는 파일이 아니라 장치로 취급된다). 이 규칙에 맞고 **목록에 있는 이름**만 열 수 있다 (T9).
+- 이름 중복은 **대소문자를 무시하고** 판정한다 (T13). **Windows에서 `Latin.db` 뒤에 `latin.db`를 쓰면 같은 파일을 덮어쓴다는 것을 실측으로 확인했다.** 그래서 `createDatabase`가 **모든 OS에서** 대소문자만 다른 이름을 거부한다(WSL에서만 통과하는 코드를 막기 위함). 배타적 생성(`wx`)은 경합에 대한 2차 방어선이다. 스캔 결과에 대소문자만 다른 두 파일이 있으면(예: Linux에서 만든 폴더를 복사해 온 경우) 둘 다 목록에 넣고 경고를 남긴다.
+- 모듈 구성: `names.ts`(이름 규칙, `dbNameExists`), `catalog.ts`(`listDatabases`, `resolveDatabase`: 각 DB를 **읽기 전용**으로 열어 `meta.language`와 단어 수를 읽고, 열리지 않거나 지원하지 않는 언어는 목록에서 빼고 경고), `open.ts`가 `names.ts`를 쓰고 `catalog.ts`가 `open.ts`를 쓰는 단방향 구조다.
 
 ### 3.2 연결 설정 (`db/open.ts`)
 ```
@@ -120,7 +122,12 @@ PRAGMA foreign_keys = ON;
 PRAGMA busy_timeout = 5000;      -- import CLI와 서버가 같은 파일을 잠깐 함께 쓸 수 있으므로
 -- journal_mode는 기본(DELETE) 유지
 ```
-- 열 때 `PRAGMA user_version`을 읽어 마이그레이션한다. 현재 스키마 버전은 **1**. DB 버전이 코드보다 크면 `DB_TOO_NEW`로 거부한다.
+- 열 때 `PRAGMA user_version`을 읽어 마이그레이션한다. 현재 스키마 버전은 **1**. DB 버전이 코드보다 크면 `DB_TOO_NEW`로 거부한다(읽기 전용으로 열 때도 같다).
+- `openDatabase(file, { readOnly?, recoverSessions? })`: `node:sqlite`는 **없는 경로를 열면 파일을 새로 만들므로** 존재 여부를 먼저 확인하고(`DB_NOT_FOUND`, 파일 미생성), SQLite 파일이 아니거나 `meta`가 없는 파일도 `DB_NOT_FOUND`로 거부한다. **`recoverSessions`는 옵트인**이며 서버만 켠다. Import CLI가 서버 실행 중인 DB를 열 때 살아 있는 세션을 잘못 닫지 않게 하기 위함이다(읽기 전용에서는 무시).
+- `createDatabase`는 마이그레이션, `meta`(`language`, `created_at`), 기본 설정을 한 트랜잭션으로 만들고 실패하면 만든 파일을 지운다.
+- **트랜잭션**: `transaction(db, fn)`은 `BEGIN IMMEDIATE` → `COMMIT`, 예외 시 `ROLLBACK` 후 재던지며 SQLite 제약 오류를 `AppError`로 변환한다. **중첩되지 않는다**(`DatabaseSync.isTransaction`은 Node 22.16 이후라 쓰지 않는다). 트랜잭션 안팎 모두에서 호출될 수 있는 코드(`insertWord` 등)는 `savepoint`를 쓴다.
+- **오류 변환**은 `errcode`가 아니라 **메시지 패턴** 기준이다(`errcode`가 최소 버전 22.13에도 있는지 확인할 수 없기 때문). `UNIQUE … word.headword` → `HEADWORD_EXISTS`, 그 밖의 `UNIQUE`/`PRIMARY KEY` → `INTERNAL`, `CHECK`/`NOT NULL`/`FOREIGN KEY` → `INVALID_REQUEST`.
+- 이 계층이 쓰는 `node:sqlite` API는 `DatabaseSync`(`readOnly` 옵션), `exec`, `prepare`, `run`(`changes`, `lastInsertRowid`), `get`, `all`, `close`로 한정한다. 최신 Node에만 있는 `isTransaction`, `location()`, `errcode`, `timeout` 옵션은 쓰지 않는다.
 - 마이그레이션은 `db/migrations.ts`의 배열(버전 → SQL)을 트랜잭션 안에서 순서대로 적용한다. 새 DB 생성(CLI `--new-db`)도 같은 코드를 쓴다.
 
 ### 3.3 스키마 (v1)
@@ -214,7 +221,7 @@ SELECT date(answered_at/1000, 'unixepoch', 'localtime') AS day, COUNT(*), SUM(ve
 - **활성 세션은 서버 전체에서 하나**다(단일 사용자). PC와 휴대폰이 동시에 접속하면 같은 세션을 함께 본다.
 - **`last_seen_at`**: API 호출마다 갱신하되 30초 이내 중복 갱신은 건너뛴다.
 - **정상 종료**: 서버가 `SIGINT`, `SIGTERM`, `SIGHUP`, `SIGBREAK`를 받으면 활성 세션의 `ended_at = now`를 기록하고 종료한다. Windows에서 콘솔 창을 닫으면 Node에 `SIGHUP`이 전달된다 (약 10초 뒤 강제 종료되므로 동기 API로 즉시 기록).
-- **비정상 종료 보정**: DB를 열 때 `ended_at IS NULL`인 이전 세션은 `ended_at = last_seen_at`으로 채운다.
+- **비정상 종료 보정**: 서버가 DB를 `recoverSessions: true`로 열 때 `ended_at IS NULL`인 이전 세션을 `ended_at = last_seen_at`으로 채운다. **서버만** 이 옵션을 켠다(3.2).
 - 진행 중이던 라운드가 남아 있으면(`ended_at IS NULL`) 같은 세션 안에서만 이어서 진행할 수 있다. 세션이 끝나면 그 라운드는 **중도 포기**로 두고 `ended_at`을 채우지 않는다. 라운드 번호는 이미 소비된 것으로 본다.
 
 ---
@@ -537,7 +544,7 @@ node --disable-warning=ExperimentalWarning "%~dp0import.mjs" %*
 | 차이 | 확인한 사실 | 규칙 |
 |------|-------------|------|
 | **줄바꿈** | `cmd.exe`는 CRLF가 아닌 배치 파일에서 오작동할 수 있다. 저장소에는 `.gitattributes`와 `core.autocrlf` 설정이 없었다 | `.gitattributes`에 `*.bat text eol=crlf`, 소스는 `eol=lf`. `build`/`package`/`deploy`가 `.bat`을 CRLF, **BOM 없는 UTF-8**로 기록한다 (T14). 검증: 배포된 `.bat`의 모든 줄이 CRLF |
-| **파일명 대소문자** | Windows는 대소문자를 구분하지 않고 Linux는 구분한다 | DB 이름 중복 검사는 대소문자 무시 (T13). 경로는 `path.join`과 `fileURLToPath`를 쓰고 `/`나 `\\`를 하드코딩하지 않는다 |
+| **파일명 대소문자** | Windows는 대소문자를 구분하지 않고 Linux는 구분한다. **실측: Windows에서 `Latin.db` 뒤에 `latin.db`를 쓰면 같은 파일이 덮어써진다** | DB 이름 중복 검사는 대소문자 무시 (T13). 경로는 `path.join`과 `fileURLToPath`를 쓰고 `/`나 `\\`를 하드코딩하지 않는다 |
 | **실행 중인 스크립트** | 실행 중인 `server.mjs`는 **잠기지 않아 덮어쓰기가 허용**된다. 다만 실행 중인 서버는 **옛 코드를 메모리에** 두고 있어 새 `public/`과 어긋난다 | 서버가 `server.lock`을 만들고 종료 시 지운다. `deploy`는 lock이 있으면 "서버를 먼저 종료하세요"로 중단하고 `--force`로만 진행한다 (T16). 비정상 종료로 남은 lock은 서버가 다음 기동 때 덮어쓴다 |
 | **열린 DB 파일** | 서버가 연 SQLite 파일은 **삭제·이름 변경이 차단**된다(`Permission denied`). **복사는 허용**된다 | 자동 백업(T12)은 파일 복사라 서버 실행 중에도 동작한다. 테스트와 스크립트는 DB를 `close()`한 뒤에 지운다. `deploy`는 `data/`를 건드리지 않는다 |
 | **OS를 넘나드는 DB 접근** | `/mnt/c`(WSL에서 본 Windows 파일)는 SQLite 잠금이 불안정할 수 있다 | WSL에서 Windows 쪽 DB를 열 때는 **읽기 전용, 순차 접근**만 한다. 같은 DB를 WSL과 Windows가 **동시에** 열지 않는다. 자동 검증은 이 규칙을 따른다 |
@@ -592,6 +599,7 @@ node --disable-warning=ExperimentalWarning "%~dp0import.mjs" %*
 | 사용자가 고친 뜻을 재 import가 덮어씀 | 수정 내용 손실 | 갱신 항목의 이전 → 이후 값을 리포트에 표시하고 반영 전에 자동 백업 |
 | 제출 후 뜻 수정으로 과거 `hits`가 어긋남 | 이력 표시 오류 | 이번 범위에 이력 화면이 없어 영향 없음. 이력 화면을 만들 때 스냅샷 컬럼을 추가한다 |
 | 두 기기에서 동시 접속 | 같은 세션을 함께 조작 | 단일 사용자 전제. 두 번째 기기는 같은 세션 상태를 그대로 본다 |
+| 최신 Node에만 있는 `node:sqlite` API(`isTransaction`, `location()`, `errcode`, `timeout` 옵션)를 무심코 사용 | 이 PC(Node 24.14)에서는 통과하지만 최소 버전 22.13에서 실행 시 오류 | 사용 API를 3.2의 목록으로 한정하고 오류는 메시지로 판별한다. 22.13 실제 동작은 M9 수동 체크리스트로 확인한다 |
 | `@types/node` 22.20이 Node 22.13에 없는 API를 허용 | 타입 검사는 통과하지만 최소 버전에서 실행 시 오류 | 완전히 막을 수 없는 잔여 위험. 새 Node API를 쓸 때 도입 버전을 확인하고, 사용자 PC의 Node 버전을 M9 수동 체크리스트로 확인한다 |
 | TypeScript 7·vitest 5 등 최신 메이저가 이후 도입 라이브러리(Vite, MUI)와 어긋남 | 설치·빌드 실패 | 라이브러리 도입 시(M5) 즉시 `tsc -b`와 테스트를 돌려 확인하고, 문제가 있으면 TypeScript 6.x로 내린다(lockfile로 복원 가능) |
 | `.bat`이 LF로 저장됨 | `cmd.exe`에서 오작동 | `.gitattributes` + 빌드 시 CRLF 변환 + 배포본 줄바꿈 검증 (T14) |
@@ -687,6 +695,20 @@ node --disable-warning=ExperimentalWarning "%~dp0import.mjs" %*
 - 이 PC의 Windows Node는 24.14이므로 **최소 버전 22.13은 검증되지 않았다**(M9 수동 체크리스트).
 - `read-excel-file`은 TS 소스에서 esbuild 번들로 성공했다. `fflate` 대체안은 필요하지 않다.
 - `createRequire` 배너를 `scripts/build.mjs`에 넣었다(없으면 Windows·Linux 모두 `Dynamic require` 오류).
+
+### 14.5 M2 데이터베이스 계층 확인 (2026-09-20, `npm run smoke:win-db`)
+같은 검사(`test/support/db-check.ts`)를 **Linux와 Windows(`node.exe`) 양쪽에서** 실행했고 둘 다 전부 통과했다. 이 검사는 vitest를 쓸 수 없는 Windows에서 돌리려고 esbuild로 번들한 뒤 `node:assert`만 쓴다.
+
+| 검증 | 결과 |
+|------|------|
+| DB 생성, 스캔에 나타남, 한글·장음 기호 왕복, pool 조회 | Windows·Linux 모두 통과 |
+| 닫은 뒤 폴더에 `-journal`·`-wal` 등 부속 파일이 없음 | 통과 (T8 실증) |
+| `Latin.db`가 있을 때 `latin.db` 생성 | **양쪽 모두 거부**, 원본 무손상 |
+| **열려 있는 DB 파일의 삭제·이름 변경** | Windows에서 실패, `close()` 후 성공 (8.5 실증) |
+| 읽기 전용 열기 쓰기 차단, 세션 복구 옵트인, 예약 장치 이름 거부 | 통과 |
+
+- **이 검사로 발견해 고친 결함**: 처음에는 `createDatabase`가 OS 파일시스템의 대소문자 규칙에 의존했다. Windows에서는 거부되지만 Linux(WSL)에서는 `latin.db`를 `Latin.db`와 **다른 파일로** 만들어 버렸다. 그래서 `dbNameExists` 검사를 `createDatabase` 안으로 옮겨 모든 OS에서 같게 동작하도록 했다(3.1).
+- 자동 테스트 136개(errors 6, migrations 21, transaction 7, open 16, names 30, catalog 17, sessions 6, queries 33)는 임시 디렉터리의 실제 파일 DB를 쓴다.
 
 ---
 

@@ -1,7 +1,7 @@
 # Word Quiz 실행 계획
 
-> 상태: v1.3 (진행 중 · M0~M1 완료) · 작성일: 2026-09-20  
-> 기준 문서: `docs/PRD.md` v1.3, `docs/TECH-SPEC.md` v1.3, `docs/word-quiz-mockup.html`  
+> 상태: v1.4 (진행 중 · M0~M2 완료) · 작성일: 2026-09-20  
+> 기준 문서: `docs/PRD.md` v1.3, `docs/TECH-SPEC.md` v1.4, `docs/word-quiz-mockup.html`  
 > 범위: **무엇을 어떤 순서로 만들고 어떻게 확인하는가**. 요구사항은 PRD, 설계는 기술 스펙이 다룬다.
 
 ---
@@ -23,7 +23,7 @@
 |---|----------|------|------|
 | M0 | 프로젝트 골격 + Windows 스모크 | S | [x] 2026-09-20 |
 | M1 | 공용 규칙 (`src/shared`) | M | [x] 2026-09-20 |
-| M2 | DB 계층 | M | [ ] |
+| M2 | DB 계층 | M | [x] 2026-09-20 |
 | M3 | Import CLI | L | [ ] |
 | M4 | 서버 서비스와 API | L | [ ] |
 | M5 | 클라이언트 골격 · 시작 · 공통 | M | [ ] |
@@ -64,7 +64,7 @@
 **M0 결과 (2026-09-20)**: 완료 기준 ①~⑤ 전부 충족. 스모크 20/20 통과.
 - 판별 결과: `read-excel-file` 번들 성공(대체안 불필요), `WSLENV=WORDQUIZ_HOME/p`로 Windows 프로세스에 환경변수 전달 가능, vitest `ExperimentalWarning`은 `execArgv`로 억제됨.
 - 고정 버전과 tsconfig 결정(`Bundler` 해석, `@types/node` 22.x)은 TECH-SPEC 2.1에 기록했고, 스모크 상세는 TECH-SPEC 14.4에 있다.
-- `npm run typecheck` / `npm test -- smoke` / `npm run build` / `npm run smoke:win`이 이후 마일스톤의 기본 검증 명령이다.
+- `npm run typecheck` / `npm test -- <이름>` / `npm run build` / `npm run smoke:win`(서버·CLI 번들의 Windows 스모크) / `npm run smoke:win-db`(DB 계층의 Linux·Windows 동작 확인, M2)가 이후 마일스톤의 기본 검증 명령이다.
 - 최소 버전 Node 22.13은 이 PC(24.14)에서 검증할 수 없어 M9 수동 체크리스트에 남는다.
 
 ### M1. 공용 규칙 `src/shared` (M)
@@ -90,6 +90,13 @@
 | 완료 기준 | ① 빈 DB에서 마이그레이션이 v1 스키마를 만들고 재실행해도 변화 없음 ② 코드보다 높은 `user_version`이면 `DB_TOO_NEW` ③ 고아 세션(`ended_at IS NULL`)이 열 때 `last_seen_at`으로 닫힘 ④ pool 경계: `next_round == n`은 포함, `n-1`(즉 `next_round > n`)은 제외, `done`은 제외, 재시험은 `wrong_mark = 1`만 ⑤ DB 이름 검증이 `latin.db`, `latin_2.db`는 통과시키고 `../x.db`, `a/b.db`, `x.txt`, 빈 문자열, `a b.db`는 거부 ⑥ UNIQUE(`errcode 2067`)·CHECK·FK 위반이 도메인 오류로 변환됨 ⑦ 스캔이 `meta`가 없는 파일을 목록에서 뺌 ⑧ `Latin.db`와 `latin.db`를 **같은 이름으로 판정**(T13)하고, 스캔에서 대소문자만 다른 두 파일이 있으면 경고 |
 | 검증 | `npm test -- db`. 임시 디렉터리 DB와 `:memory:` 사용 |
 | 커밋 제안 | `feat: Add SQLite migrations and connection` / `feat: Add DB queries and name validation` |
+
+**M2 결과 (2026-09-20)**: 완료 기준 ①~⑦ 전부와 추가 항목을 충족. 자동 테스트 136개(전체 369개, 13개 파일) 통과, `smoke:win-db` Linux·Windows 모두 통과, `smoke:win` 20/20 유지.
+- **결함 주입 검증 20가지를 모두 잡았다**: pool 경계(`<=` → `<`), 완료 단어 포함, 재시험 조건 누락, Perfect 외 정답 집계, Windows 예약 이름 허용, 이름 대소문자 비교, 목록에 없는 이름 허용, 세션 복구 상시 실행, 없는 파일 생성, 덮어쓰기 허용, 스로틀 경계, 고아 세션 종료 시각, 롤백 누락, 새 버전 DB 검사 제거, 헤드워드 오류 매핑 제거, 설정 범위 검사 제거, 대소문자 무시 생성 검사 제거 등.
+- **실제 OS에서 결함 발견**: `smoke:win-db`를 Linux에서도 돌렸더니 `createDatabase`가 대소문자만 다른 이름을 거부하지 않는 결함이 드러났다(Windows는 파일시스템이 막아 주어 가려져 있었다). 검사를 `createDatabase` 안으로 옮겨 모든 OS에서 같게 만들었다. 이 검사는 **M3 `--new-db`가 그대로 상속**한다.
+- **계획 대비 변경**: `names.ts`를 `names.ts`(이름 규칙)와 `catalog.ts`(스캔·해석)로 나누고, `transaction.ts`(`transaction`, `savepoint`)와 `errors.ts`를 분리했다(순환 import 방지). 삽입 함수가 트랜잭션 안팎에서 모두 동작하도록 `savepoint`를 추가했다.
+- **스펙 보완**(TECH-SPEC 3.1·3.2·3.5·8.5·11·14.5 반영): 예약 이름·길이 제한, `recoverSessions` 옵트인, 트랜잭션 비중첩, 메시지 기반 오류 변환, 사용 API 목록.
+- **M3에서 쓸 것**: `createDatabase`, `openDatabase(readOnly)`, `dbNameExists`, `insertWord`, `transaction`/`savepoint`, `AppError`. **주의**: `insertWord`는 표제어를 trim + NFC로 저장하므로 M3의 표제어 동일성 판정과 일치한다. `updateWord`(뜻·노트 갱신)는 아직 없다(M3 merge와 M4 words API에서 필요).
 
 ### M3. Import CLI `src/cli` (L)
 | 구분 | 내용 |
@@ -188,6 +195,7 @@ curl.exe -s http://localhost:35000/api/databases      # WSL curl 대신 curl.exe
 | 강제 종료 후 복구 | 세션 시작 → `Stop-Process -Force` → 재기동 후 같은 DB 시작 | 이전 세션 `ended_at`이 `last_seen_at`으로 채워짐 |
 | UTF-8 | `import.bat`(또는 `cmd.exe /c chcp 65001 ...`)의 출력을 **파일로 리다이렉트**해 바이트 확인 | 장음 기호(`ā ē ī ō ū`)·움라우트가 깨지지 않음 |
 | 배포 스크립트 | `deploy` 두 번 실행 | `data/`·`reports/` 보존 |
+| DB 계층 동작 | `npm run smoke:win-db`: 같은 검사를 Linux와 `node.exe`에서 실행(대소문자 이름 충돌 거부, 열린 DB 삭제·이름 변경 차단, 부속 파일 없음 등, TECH-SPEC 14.5) | 양쪽 모두 통과 |
 | 파일 호환 | Windows에서 만든 DB를 WSL에서 **읽기 전용·순차**로 열고, 그 반대도 확인. **같은 DB를 동시에 열지 않는다**(`/mnt/c` 잠금 불안정, TECH-SPEC 8.5) | 양쪽에서 읽힘 |
 | 배포 잠금 | 서버 기동(`server.lock` 생성) 후 `deploy` 실행 | 중단 메시지 출력, `--force`로만 진행 |
 | 줄바꿈 | 배포된 `.bat` 검사 | 모든 줄 CRLF, BOM 없음 |
