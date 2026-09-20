@@ -1,7 +1,7 @@
 # Word Quiz 실행 계획
 
-> 상태: v1.6 (진행 중 · M0~M4 완료) · 작성일: 2026-09-20  
-> 기준 문서: `docs/PRD.md` v1.3, `docs/TECH-SPEC.md` v1.6, `docs/word-quiz-mockup.html`  
+> 상태: v1.7 (진행 중 · M0~M5 완료, M5 UI 컨펌 대기) · 작성일: 2026-09-20  
+> 기준 문서: `docs/PRD.md` v1.3, `docs/TECH-SPEC.md` v1.7, `docs/word-quiz-mockup.html`  
 > 범위: **무엇을 어떤 순서로 만들고 어떻게 확인하는가**. 요구사항은 PRD, 설계는 기술 스펙이 다룬다.
 
 ---
@@ -143,6 +143,11 @@
 | 완료 기준 | ① 시작 화면에서 언어(English는 "Coming soon"으로 비활성)와 DB를 골라 시작하면 `Shell`이 뜬다 ② 없는 DB → "The selected DB does not exist." 알림 후 시작 화면 복귀 ③ Switch DB → 확인 후 새 세션, 상태 바 0으로 초기화 ④ 상단 DB 표시·탭·하단 상태 바가 목업 5.1~5.2 구조와 일치 ⑤ 390px 폭에서 가로 스크롤 없음 ⑥ 콘솔 오류 없음 |
 | 검증 | 서버 + Vite dev 서버를 띄워 브라우저로 확인, 목업과 나란히 비교. `npm run typecheck` |
 | 커밋 제안 | `feat: Add client scaffold and theme` / `feat: Add start screen and app shell` |
+
+**M5 결과 (2026-09-20)**: 완료 기준 ①~⑥ 충족. 클라이언트 테스트 71개 추가(**전체 926개**), 결함 주입 14가지 모두 검출, `smoke:server` **51/51**(웹 앱 페이지·스크립트 서빙, 일반 빌드에 갤러리 없음 확인 추가), `smoke:win` 24/24·`smoke:win-db`·`smoke:import` 63/63 유지. 스크린샷 대조에서 브라우저 콘솔 오류 0건, 390px 가로 스크롤 없음.
+- **계획 대비 변경**: `Tabs` 대신 `ButtonBase` + `aria-current`로 만들었다(패널이 없는 화면 이동이라 `role="tab"`이 부적합). 갤러리는 `vite build --mode shots`에서도 포함되며, 스크린샷은 Vite dev 서버가 아니라 **빌드된 앱**으로 찍는다(헤드리스에서 dev 서버 화면이 비어 찍힘). 시작 화면은 목업에 맞춰 흰 바탕·왼쪽 정렬·가로 라디오로 조정했다.
+- **목업과 다른 점(컨펌 요청 대상)**: (1) MUI의 라디오·선택 상자·버튼 모양이 목업의 브라우저 기본 모양과 다르다. (2) 시작 화면 DB 목록이 비었을 때 "No database yet…" 안내와 목록을 못 읽을 때의 Retry 안내를 추가했다(목업에 없음). (3) 서버에 닿지 못하면 "Cannot reach the server" 화면과 Retry를 보여 준다(목업에 없음). (4) 탭 안은 "This screen is not built yet."라는 자리표시자다(M6·M7).
+- **UI 컨펌 요청**: `npm run dev:seed` 후 브라우저로 `http://localhost:35101`을 열어 시작 화면·공통 틀을 확인하고, 상태별 화면은 `http://localhost:35101/#/dev`, 대화상자는 `#/dev/nodb`·`#/dev/switch`에서 볼 수 있다. 스크린샷은 `docs/ui-checks/`(`npm run shots`로 다시 만든다).
 
 ### M6. 클라이언트 퀴즈 흐름 (L)
 | 구분 | 내용 |

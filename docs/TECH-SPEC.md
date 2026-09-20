@@ -1,6 +1,6 @@
 # Word Quiz 기술 스펙
 
-> 상태: v1.6 (확정) · 작성일: 2026-09-20 · 최종 수정: 2026-09-20  
+> 상태: v1.7 (확정) · 작성일: 2026-09-20 · 최종 수정: 2026-09-20  
 > 기준 문서: `docs/PRD.md` v1.3, `docs/word-quiz-mockup.html`(영어 UI, 컨펌 완료)  
 > 범위: **어떻게 만드는가**. 제품 요구사항은 PRD가, 작업 순서는 별도 실행 계획 문서가 다룬다.
 
@@ -53,9 +53,15 @@
 | `read-excel-file` | 9.3.10 | 번들 성공, 빈 셀은 `null`, **문자열 셀의 앞뒤 공백을 스스로 제거** |
 | `express` | 5.2.1 | 서버(M4). **번들 1.18MB**(CLI의 5배), 직접 의존성 28개·설치 패키지 69개. Linux와 Windows에서 번들 실행 확인 |
 | `@types/express` | 5.0.6 | 타입(번들 밖) |
+| `react`, `react-dom` | 19.3.0 | 클라이언트(M5). TS 7에서 `@types/react` 19.3.0과 함께 타입 검사 통과 |
+| `@mui/material` | 9.4.0 | 새 메이저. `Dialog`·`Select`·`Snackbar`·`Chip`·`cssVariables`+`colorSchemes` 동작 확인. 아이콘 패키지는 쓰지 않는다(크기) |
+| `@emotion/react` / `@emotion/styled` | 11.14.0 / 11.14.1 | MUI 의존 |
+| `@fontsource/eb-garamond`, `@fontsource/ibm-plex-mono` | 5.3.0 | **`latin`·`latin-ext` 조각만** import(전체 import는 키릴·그리스어까지 포함). 장음 기호는 `latin-ext` |
+| `vite` / `@vitejs/plugin-react` | 8.3.0 / 6.1.1 | 빌드 결과 JS 478KB(gzip 147KB), `dist/public` 전체 약 930KB |
+| `jsdom` / `@testing-library/react` / `user-event` / `jest-dom` | 30.1.0 / 16.3.3 / 14.6.7 / 7.0.1 | 클라이언트 테스트 |
 | `fflate` | 0.8.3 | 테스트용 xlsx 생성(M3), 패키징(M8). `read-excel-file`의 하위 의존성으로 이미 설치돼 있던 버전을 명시적으로 고정 |
 
-**tsconfig 규칙**: `module: ESNext` + `moduleResolution: Bundler`, `strict`, `noUncheckedIndexedAccess`, `verbatimModuleSyntax`. 서버·CLI·클라이언트가 모두 번들되므로 확장자 없는 import를 쓴다(`NodeNext`는 `.ts` 확장자를 강제해 부적합). `package.json`에는 `"type":"module"`이 필수다(없으면 TS1295 오류). `tsconfig.client.json`은 React 도입 시점인 M5에 추가한다.
+**tsconfig 규칙**: `module: ESNext` + `moduleResolution: Bundler`, `strict`, `noUncheckedIndexedAccess`, `verbatimModuleSyntax`. 서버·CLI·클라이언트가 모두 번들되므로 확장자 없는 import를 쓴다(`NodeNext`는 `.ts` 확장자를 강제해 부적합). `package.json`에는 `"type":"module"`이 필수다(없으면 TS1295 오류). `tsconfig.client.json`(M5)은 DOM lib과 `jsx: react-jsx`를 쓰며 `src/client`, `src/shared`, `test/client`를 검사한다. `tsconfig.node.json`은 `test/client`를 제외한다. vitest는 `projects`로 나뉜다: `server`(node 환경)와 `client`(jsdom, `test/client/setup.ts`).
 
 ### 2.2 저장소 구조
 ```
@@ -93,7 +99,8 @@ word-quiz/
 |----------|------|
 | `typecheck` | `tsc -b` (node용과 client용 tsconfig를 함께 검사) |
 | `test` | `vitest run`. 단일 파일은 `npm test -- grading` 식으로 |
-| `dev` | 서버(`tsx watch`)와 Vite dev 서버 동시 실행. Vite가 `/api`를 서버로 프록시 |
+| `dev` | `scripts/dev.mjs`: 서버를 esbuild로 번들해 `.wq-home`을 홈으로 띄우고(포트 35100) Vite dev 서버(35101)를 함께 실행. Vite가 `/api`를 서버로 프록시. Ctrl+C로 둘 다 종료. `dev:seed`는 샘플 xlsx를 `.wq-home`에 `latin.db`로 먼저 import |
+| `shots` | `scripts/shots.sh`: 임시 홈 + `vite build --mode shots`(갤러리 포함)로 Windows Chrome 헤드리스 스크린샷을 `docs/ui-checks/`에 만들고 브라우저 콘솔 오류를 센다 |
 | `build` | Vite → `dist/public/`, esbuild → `dist/server.mjs`, `dist/import.mjs` |
 | `package` | `dist/`와 `release/*.bat`을 `release/WordQuiz.zip`으로 묶는다 (`fflate`, 별도 `zip` 명령 불필요) |
 | `deploy` | `dist/`와 `release/*.bat`을 `/mnt/c/WordQuiz`로 복사. **`data/`, `reports/`는 절대 덮어쓰거나 지우지 않는다.** `server.lock`이 있으면 중단(`--force`로 무시, 8.5) |
@@ -535,6 +542,12 @@ Result: NOT applied. Fix the errors in the Excel file and run again.
 - 라우팅은 `location.hash`(`#/quiz`, `#/wrong`, `#/words`, `#/settings`)를 읽는 작은 훅 하나로 처리한다.
 - 서버 상태는 `api.ts`의 fetch 래퍼와 화면별 훅으로 관리한다(별도 상태 관리·쿼리 라이브러리 없음). 오류 코드는 `ApiError`로 던지고 화면에서 코드별로 분기한다.
 - 테마: 목업의 색 토큰(`--accent #2F55B5` 등)을 MUI 테마로 옮기고 `prefers-color-scheme`으로 다크 모드를 지원한다. 표제어는 `EB Garamond`(장음 기호 지원), 숫자·코드는 `IBM Plex Mono`.
+- **표시 컴포넌트와 컨테이너를 나눈다(M5)**: `StartScreen`, `NoDbDialog`, `SwitchDbDialog`, `TopBar`, `TabsBar`, `StatusBar`, `ServerUnreachable`는 props만 받는 표시 컴포넌트이고, `StartPage`, `Shell`, `App`이 데이터를 다룬다. 그래서 대화상자·오류 상태를 서버 없이 테스트하고 갤러리에 그릴 수 있다.
+- **API 오류 처리(M5)**: `api.ts`는 `ApiError(code, status, message)`를 던진다. 서버에 닿지 못하면 `NETWORK_ERROR`, JSON이 아닌 응답은 `INVALID_RESPONSE`. `classifyApiError`(순수 함수)가 규칙을 정한다: `NO_SESSION` → 시작 화면, `DB_NOT_FOUND` → 시작 화면 + "The selected DB does not exist." 알림, 그 밖에는 스낵바. 부팅 시 서버에 못 닿으면 "Cannot reach the server"와 Retry.
+- **브라우저 저장소**: `usePersistedChoice`가 마지막에 쓴 DB만 `localStorage`에 기억한다. 읽기·쓰기를 모두 `try/catch`로 감싸 저장소가 막혀 있어도 화면은 정상 동작한다.
+- **테마(M5)**: `cssVariables: { colorSchemeSelector: 'media' }`와 `colorSchemes`(light/dark)로 `prefers-color-scheme`을 따른다. 색 토큰은 목업 값 그대로이며 `test/client/theme.test.tsx`가 값을 검사한다. **MUI 버튼은 기본으로 대문자로 바꾸므로 `textTransform: 'none'`이 필요하다.**
+- **개발용 갤러리**: `src/client/dev/Gallery.tsx`(`#/dev`, `#/dev/nodb`, `#/dev/switch`)는 `import.meta.env.DEV` 또는 `--mode shots`일 때만 포함된다. 일반 빌드에서는 상수 `false`로 접혀 번들에 없다(`smoke:server`가 확인).
+- 클라이언트 테스트는 `console.error`가 한 번이라도 호출되면 실패한다(React 경고·처리되지 않은 오류를 놓치지 않기 위해).
 - 표제어 요소에 `lang="la"`, 줄바꿈은 `overflow-wrap: anywhere`.
 - 입력창: `autoCapitalize="off"`, `autoCorrect="off"`, `spellCheck={false}`, `enterKeyHint="send"`. 모바일 키보드의 자동 고침이 독일어 답을 망가뜨리지 않게 한다.
 - 제출 후 **Next 버튼에 포커스**를 옮겨 Enter가 다음 문제로 이동시키게 한다(전역 키 핸들러 없이 접근성 유지). `Done3Dialog`가 열려 있는 동안은 MUI 포커스 트랩이 Enter를 가로챈다.
@@ -809,6 +822,12 @@ node --disable-warning=ExperimentalWarning "%~dp0import.mjs" %*
   3. `DB_TOO_NEW`는 목록 스캔에서 먼저 걸러져 `POST /session`으로는 사실상 나오지 않는다(위 5.1 참고). 느슨했던 테스트(404·409 아무거나 허용)를 정확한 동작으로 고쳤다.
   4. 테스트 작성 중 제 기대값 산수 실수 2건(구현은 옳았음)과, 아무것도 검증하지 않던 테스트 1건(`toBeDefined`를 호출하지 않음)을 바로잡았다.
 - **관찰**: 이 서버는 정적 파일이 아직 없어 루트가 안내 텍스트를 돌려준다(M5에서 클라이언트가 채운다). Windows의 콘솔 창 닫기(`SIGHUP`)·Ctrl+C는 자동 검증할 수 없어 M9 수동 체크리스트에 남는다.
+
+### 14.8 M5 클라이언트 골격 확인 (2026-09-20)
+- **자동 테스트**: 클라이언트 71개(전체 926개). 결함 주입 14가지(English 활성화, "Coming soon" 제거, 알림 문구, `NO_SESSION`·`DB_NOT_FOUND` 처리, Switch가 `DELETE`를 안 보냄, 확인창 생략, 상태 바 필드 뒤바뀜, 해시 매핑, `aria-current`, `ApiError` 변환, 네트워크 오류, `localStorage` 예외, 테마 색)을 모두 검출. 첫 실행에서 `NO_SESSION` 분기가 살아남아 `classifyApiError`를 순수 함수로 빼서 테스트했다.
+- **화면 확인**: `npm run shots`로 시작·공통 틀(PC, 390px, 다크)과 대화상자를 찍고 목업과 대조했다. 브라우저 콘솔 오류·경고 0건, 390px에서 가로 스크롤 없음.
+- **환경 관찰**: (1) 헤드리스 Chrome은 창 폭을 약 500px 아래로 줄이지 않아 휴대폰 화면은 iframe(390px)으로 찍는다. (2) 이 Chrome에서 `--blink-settings=preferredColorScheme=0`이 **다크**, `1`은 라이트다. (3) Vite dev 서버의 페이지는 헤드리스에서 비어 찍혔고(모듈 수백 개 로드), 빌드된 앱은 정상이라 스크린샷은 빌드 결과로 찍는다. (4) jsdom에서는 열린 포커스가 없으면 MUI 포커스 트랩이 대화상자를 닫을 때 `document`에 포커스를 주려다 오류가 나서, 테스트 헬퍼가 포커스된 버튼을 먼저 만든다(실제 브라우저에서는 대화상자를 연 버튼이 그 역할).
+- **번들**: JS 478KB(gzip 147KB), `dist/public` 약 930KB(폰트 조각 포함). M8 배포 zip 크기에 반영한다.
 
 ---
 
