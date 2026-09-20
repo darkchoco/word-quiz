@@ -1,0 +1,10 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "types": ["node"],
+    "composite": true,
+    "emitDeclarationOnly": true,
+    "outDir": "./.tsbuild/node"
+  },
+  "include": ["src/shared", "src/server", "src/cli", "test", "vitest.config.ts"]
+}
