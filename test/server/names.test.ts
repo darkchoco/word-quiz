@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { dbNameExists, isValidDbName, sameDbName } from '../../src/server/db/names';
+import { dbNameExists, findExistingDbName, isValidDbName, sameDbName } from '../../src/server/db/names';
 import { createDatabase } from '../../src/server/db/open';
 import { insertWord } from '../../src/server/db/queries';
 import { useTempDir } from '../support/tempdir';
@@ -58,6 +58,15 @@ describe('sameDbName and dbNameExists', () => {
     expect(dbNameExists(dir, 'latin.db')).toBe(true);
     expect(dbNameExists(dir, 'LATIN.DB')).toBe(true);
     expect(dbNameExists(dir, 'latin_2.db')).toBe(false);
+  });
+
+  it('tells the real spelling of the file that is in the way', () => {
+    const dir = t.dir();
+    makeDb(dir, 'Latin.db');
+    expect(findExistingDbName(dir, 'latin.db')).toBe('Latin.db');
+    expect(findExistingDbName(dir, 'LATIN.DB')).toBe('Latin.db');
+    expect(findExistingDbName(dir, 'other.db')).toBeUndefined();
+    expect(findExistingDbName(path.join(dir, 'missing'), 'latin.db')).toBeUndefined();
   });
 
   it('is false when the data directory does not exist', () => {

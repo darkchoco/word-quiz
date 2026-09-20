@@ -25,17 +25,23 @@ export function sameDbName(a: string, b: string): boolean {
 }
 
 /**
- * True if a file whose name equals `name` ignoring case exists in `dataDir`. The import CLI
- * checks this before creating a database, because on Windows `latin.db` would silently
- * overwrite an existing `Latin.db`.
+ * The name of the file in `dataDir` that equals `name` ignoring case, spelled as it is on disk,
+ * or undefined. The import CLI uses this before creating a database, because on Windows
+ * `latin.db` would silently overwrite an existing `Latin.db`, and to tell the user the real
+ * name of the database that is in the way.
  */
-export function dbNameExists(dataDir: string, name: string): boolean {
+export function findExistingDbName(dataDir: string, name: string): string | undefined {
   let entries: string[];
   try {
     entries = fs.readdirSync(dataDir);
   } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === 'ENOENT') return false;
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') return undefined;
     throw error;
   }
-  return entries.some((entry) => sameDbName(entry, name));
+  return entries.find((entry) => sameDbName(entry, name));
+}
+
+/** True if a file whose name equals `name` ignoring case exists in `dataDir`. */
+export function dbNameExists(dataDir: string, name: string): boolean {
+  return findExistingDbName(dataDir, name) !== undefined;
 }
