@@ -1,7 +1,7 @@
 # Word Quiz 실행 계획
 
-> 상태: v1.2 (진행 중 · M0 완료) · 작성일: 2026-09-20  
-> 기준 문서: `docs/PRD.md` v1.3, `docs/TECH-SPEC.md` v1.2, `docs/word-quiz-mockup.html`  
+> 상태: v1.3 (진행 중 · M0~M1 완료) · 작성일: 2026-09-20  
+> 기준 문서: `docs/PRD.md` v1.3, `docs/TECH-SPEC.md` v1.3, `docs/word-quiz-mockup.html`  
 > 범위: **무엇을 어떤 순서로 만들고 어떻게 확인하는가**. 요구사항은 PRD, 설계는 기술 스펙이 다룬다.
 
 ---
@@ -22,7 +22,7 @@
 | # | 마일스톤 | 크기 | 상태 |
 |---|----------|------|------|
 | M0 | 프로젝트 골격 + Windows 스모크 | S | [x] 2026-09-20 |
-| M1 | 공용 규칙 (`src/shared`) | M | [ ] |
+| M1 | 공용 규칙 (`src/shared`) | M | [x] 2026-09-20 |
 | M2 | DB 계층 | M | [ ] |
 | M3 | Import CLI | L | [ ] |
 | M4 | 서버 서비스와 API | L | [ ] |
@@ -75,6 +75,13 @@
 | 검증 | `npm test -- grading`, `npm test -- scheduling`, `npm test -- meanings` |
 | 회귀 방지 | 픽스처는 실제 샘플에서 **문제가 됐던 행 약 20개**를 발췌해 저장한다(전체 178행 복사 아님). 실제 파일 전체에 대한 검증은 M3 종단 검증에서 한다 |
 | 커밋 제안 | `feat: Add grading rules` / `feat: Add scheduling rules` / `feat: Add meanings format helpers` / `feat: Add shared API types` |
+
+**M1 결과 (2026-09-20)**: 완료 기준 ①~⑥ 전부 충족. 테스트 228개(api 3, grading 173, scheduling 17, meanings 35) 통과, `npm run smoke:win` 20/20 유지.
+- **결함 주입 검증**: 테스트가 실제로 결함을 잡는지 확인하려고 구현을 일부러 망가뜨려 봤다. 스파이크에서 실패했던 "원형 누락"은 44건, 문장부호 미무시 4건, 괄호 무시 쉼표 분리 12건, 빈 `groups` 미검증 1건이 실패했고, 출제 규칙(첫 Perfect N+3, `askDone` 기준, Perfect가 오답 마크 해제)과 뜻 검증(왕복 검사 생략, `MAX_GROUPS`)도 모두 검출됐다. 복원 후 원본과 동일함을 `diff`로 확인했다.
+- **픽스처 19행**은 실제 단어장에서 발췌했고 기대 `groups`를 구현 출력이 아니라 **셀을 직접 보고 손으로 적었다**(순환 검증 방지). 행 번호: 2, 4, 5, 22, 24, 25, 30, 31, 33, 68, 84, 87, 93, 106, 113, 132, 138, 162, 169.
+- **스펙 보완**(TECH-SPEC 4.1·4.4·5.1 반영): 짝 없는 괄호는 일반 문자, `grade`의 빈 `groups` 예외, `validateMeanings`와 오류 코드 5종, 공통 오류 코드 4종.
+- **데이터 참고**: `quō?`의 뜻 `wohin? wo?`는 쉼표가 없어 동의어 하나로 파싱된다. 두 단어를 각각 동의어로 의도했다면 Excel을 `wohin?, wo?`로 고쳐야 한다(사용자 확인 필요).
+- `src/shared`에는 `node:` import가 없다(브라우저 번들 가능).
 
 ### M2. DB 계층 `src/server/db` (M)
 | 구분 | 내용 |

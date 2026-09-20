@@ -1,6 +1,6 @@
 # Word Quiz 기술 스펙
 
-> 상태: v1.2 (확정) · 작성일: 2026-09-20 · 최종 수정: 2026-09-20  
+> 상태: v1.3 (확정) · 작성일: 2026-09-20 · 최종 수정: 2026-09-20  
 > 기준 문서: `docs/PRD.md` v1.3, `docs/word-quiz-mockup.html`(영어 UI, 컨펌 완료)  
 > 범위: **어떻게 만드는가**. 제품 요구사항은 PRD가, 작업 순서는 별도 실행 계획 문서가 다룬다.
 
@@ -223,7 +223,7 @@ SELECT date(answered_at/1000, 'unixepoch', 'localtime') AS day, COUNT(*), SUM(ve
 
 ### 4.1 채점 (`grading.ts`)
 ```ts
-// 괄호 밖의 쉼표로만 분리, 앞뒤 공백 제거, 빈 항목 제거          (T11)
+// 짝이 맞는 괄호 밖의 쉼표로만 분리, 앞뒤 공백 제거, 빈 항목 제거   (T11)
 splitTop(s: string): string[]
 
 // NFC → 소문자 → ? ! . 제거 → ä→ae ö→oe ü→ue ß→ss → 공백 축약 → trim   (T10)
@@ -240,6 +240,10 @@ grade(groups: string[][], input: string):
 - 충족한 묶음 수가 전체와 같으면 `perfect`, 1개 이상이면 `partial`, 0이면 `wrong`.
 - D32: 정답 묶음에 없는 입력 항목은 감점하지 않는다 (예: `fassen, nehmen, erobern`도 Perfect).
 - 스페이스는 구분자가 아니다. `sich setzen`은 `sich setzen`으로만 맞는다 (`setzen`만 입력하면 오답).
+- **짝이 없는 괄호는 일반 문자**로 취급한다(M1 결정). 먼저 `(`–`)` 쌍을 스택으로 찾고, 쌍이 맞는 괄호 안의 쉼표만 보호한다. `"a (b, c"`는 `["a (b", "c"]`로 나뉜다. 단순히 깊이만 세면 짝 없는 `(` 뒤의 쉼표가 모두 삼켜진다. 실제 데이터에는 짝이 안 맞는 괄호가 없어 결과는 같다.
+- `variants`의 "괄호와 그 안의 내용 제거"도 **짝이 맞는 괄호**만 대상으로 하며 중첩은 바깥쪽 전체를 제거한다.
+- `grade()`는 `groups`가 비어 있으면 `RangeError`를 던진다(뜻 없는 단어가 조용히 Perfect가 되는 것을 막는다). 빈 입력이나 무시되는 문자(`? ! .`)뿐인 입력은 Wrong이다.
+- **데이터 참고**: 실제 목록의 `quō?` 행은 뜻이 `wohin? wo?`(쉼표 없음)라 **동의어 하나**로 파싱되어 `wohin wo` 또는 `wohin? wo?`로 입력해야 Perfect이고 `wohin, wo`는 Wrong이다. 두 단어를 각각 동의어로 의도했다면 Excel을 `wohin?, wo?`로 고친다. 이 동작은 테스트로 고정되어 있다.
 
 동작 예 (스파이크에서 확인한 결과):
 
@@ -280,9 +284,20 @@ applyResult(p: Progress, verdict: Verdict, n: number): { progress: Progress; ask
 ### 4.4 뜻 수정 형식 (`meanings.ts`)
 ```ts
 formatMeanings(groups: string[][]): string   // 묶음은 ' | ', 동의어는 ', '
-parseMeanings(text: string): string[][]      // '|'로 묶음, splitTop(',')로 동의어
+parseMeanings(text: string): string[][]      // '|'로 묶음, splitTop(',')로 동의어. 빈 묶음은 [] 로 유지
+validateMeanings(groups): MeaningsError | null
 ```
-- 검증: 묶음이 1개 이상이고 각 묶음에 동의어가 1개 이상이어야 한다. 묶음은 최대 4개. 동의어에 `|`를 쓸 수 없다.
+- `parseMeanings`는 순수 파싱만 하고, 검증은 `validateMeanings`가 한다. 처음 발견한 문제의 코드를 돌려주고(문제 없으면 `null`), API는 이를 `INVALID_MEANINGS`로 변환한다.
+
+| 코드 | 조건 |
+|------|------|
+| `EMPTY` | 묶음이 0개 |
+| `TOO_MANY_GROUPS` | 묶음이 5개 이상 (`MAX_GROUPS = 4`) |
+| `EMPTY_GROUP` | 동의어가 없는 묶음 (예: `a \| \| b`, 끝에 `\|`) |
+| `INVALID_SYNONYM` | 빈 문자열, 앞뒤 공백, `\|` 포함 |
+| `NOT_ROUNDTRIP_SAFE` | `parse(format(groups))`가 원본과 다름. 예: 동의어에 괄호 밖 쉼표(`a, b`), 두 동의어에 걸쳐 괄호가 짝지어지는 경우(`x (y` + `z) w`) |
+
+- 마지막 항목이 핵심 기준이다. **저장된 뜻은 편집 화면을 다시 열어도 같은 모습**이어야 한다.
 - `format → parse` 왕복이 항상 같은 결과여야 한다(괄호 안 쉼표 포함). 단위 테스트로 보장한다.
 
 ---
@@ -308,6 +323,8 @@ REST, JSON, 경로는 `/api` 아래. 오류 응답은 항상 `{ "error": { "code
 | POST | `/words/:id/done` | `{ done, questionPosition? }` | `WordRow` | `MARK_DONE_NOT_ALLOWED` 409 |
 | GET | `/settings` | | `{ questionsPerRound }` | |
 | PUT | `/settings` | `{ questionsPerRound }` (1~200 정수) | `{ questionsPerRound }` | `INVALID_SETTING` 400 |
+
+**공통 오류 코드** (5.1 표의 엔드포인트별 코드 외에 모든 엔드포인트에 나올 수 있다): `INVALID_REQUEST` 400(본문·파라미터 형식 오류), `FORBIDDEN_HOST` 403(Host 검사 실패, 9장), `UNSUPPORTED_MEDIA_TYPE` 415(쓰기 요청의 Content-Type이 JSON이 아님), `INTERNAL` 500. 코드별 HTTP 상태는 `ERROR_STATUS`(`src/shared/api.ts`)가 서버와 클라이언트의 단일 출처다.
 
 ### 5.2 응답 타입 (`src/shared/api.ts`)
 ```ts
