@@ -16,8 +16,10 @@
     "smoke:import": "bash scripts/import-e2e.sh"
   },
   "devDependencies": {
+    "@types/express": "5.0.6",
     "@types/node": "22.20.4",
     "esbuild": "0.28.2",
+    "express": "5.2.1",
     "fflate": "0.8.3",
     "read-excel-file": "9.3.10",
     "typescript": "7.0.2",
