@@ -44,8 +44,8 @@ cleanup() {
   kill_windows_servers
   sleep 1
   rm -rf "$TMP"
-  # A force-killed Windows process leaves its smoke DB behind; remove it once the handle is gone.
-  rm -rf "$WIN_DEV/data/smoke.db" "$WIN_DEV/envtest" "$WIN_DEV/sample.xlsx" "$WIN_DEV/sample-report.txt" 2>/dev/null
+  # A force-killed Windows process leaves its lock file behind; remove it once the process is gone.
+  rm -rf "$WIN_DEV/server.lock" "$WIN_DEV/data/smoke.db" "$WIN_DEV/envtest" "$WIN_DEV/sample.xlsx" "$WIN_DEV/sample-report.txt" 2>/dev/null
 }
 trap cleanup EXIT
 
@@ -59,17 +59,18 @@ wait_health() { # $1 = command that fetches the URL, $2 = seconds
 }
 
 # ------------------------------------------------------------------------------------------
+# Every server start uses --no-open: the real server would otherwise open the user's browser.
 echo "== 1. Linux: bundle only, no node_modules"
 mkdir -p "$TMP/linux" && cp "$DIST"/*.mjs "$TMP/linux/"
 check "no node_modules next to the bundle" "[ ! -e '$TMP/linux/node_modules' ]"
-WORDQUIZ_HOME="$TMP/linux" node $NODE_FLAGS "$TMP/linux/server.mjs" --port $LINUX_PORT >"$TMP/linux.log" 2>&1 &
+WORDQUIZ_HOME="$TMP/linux" node $NODE_FLAGS "$TMP/linux/server.mjs" --port $LINUX_PORT --no-open >"$TMP/linux.log" 2>&1 &
 LPID=$!
-if H=$(wait_health "curl -s http://127.0.0.1:$LINUX_PORT/health" 6); then
-  check "health reports linux"   "echo '$H' | grep -q '\"platform\":\"linux\"'"
-  check "health reports sqlite"  "echo '$H' | grep -Eq '\"sqlite\":\"[0-9]+\\.[0-9]+'"
-  check "appHome honors WORDQUIZ_HOME" "echo '$H' | grep -q '$TMP/linux'"
+if H=$(wait_health "curl -s http://127.0.0.1:$LINUX_PORT/api/databases" 6); then
+  check "server answers /api/databases"          "echo '$H' | grep -q '\"databases\":\[\]'"
+  check "lock file is in WORDQUIZ_HOME"          "[ -f '$TMP/linux/server.lock' ]"
+  check "another host name is refused (403)"     "[ \"\$(curl -s -o /dev/null -w '%{http_code}' -H 'Host: evil.example.com' http://127.0.0.1:$LINUX_PORT/api/databases)\" = 403 ]"
 else
-  fail "server did not answer /health"; cat "$TMP/linux.log"
+  fail "server did not answer /api/databases"; cat "$TMP/linux.log"
 fi
 if [ -f "$SAMPLE" ]; then
   # Check mode only: nothing is written except the report file that is named here.
@@ -81,8 +82,9 @@ if [ -f "$SAMPLE" ]; then
 else
   echo "  SKIP  sample xlsx not found ($SAMPLE)"
 fi
-kill -TERM "$LPID" 2>/dev/null; wait "$LPID" 2>/dev/null; LPID=""
-check "SIGTERM closes and removes smoke.db" "[ ! -e '$TMP/linux/data/smoke.db' ]"
+kill -TERM "$LPID" 2>/dev/null; wait "$LPID" 2>/dev/null; RC=$?; LPID=""
+check "SIGTERM stops the server with exit code 0" "[ $RC -eq 0 ]"
+check "SIGTERM removes the lock file"             "[ ! -e '$TMP/linux/server.lock' ]"
 
 # ------------------------------------------------------------------------------------------
 echo "== 2. Windows: node.exe via WSL, deployed to $WIN_DEV"
@@ -93,14 +95,14 @@ else
   mkdir -p "$WIN_DEV" && cp "$DIST"/*.mjs "$WIN_DEV/" || { fail "cannot write to $WIN_DEV"; }
   [ -f "$SAMPLE" ] && cp "$SAMPLE" "$WIN_DEV/sample.xlsx"
 
-  "$NODE_WIN" $NODE_FLAGS "$WIN_DEV_W\\server.mjs" --port $WIN_PORT >"$TMP/win-server.log" 2>&1 &
-  if H=$(wait_health "curl.exe -s http://localhost:$WIN_PORT/health" 8); then
-    check "health reports win32"          "echo '$H' | grep -q '\"platform\":\"win32\"'"
-    check "health reports sqlite"         "echo '$H' | grep -Eq '\"sqlite\":\"[0-9]+\\.[0-9]+'"
-    check "appHome is the bundle folder"  "echo '$H' | grep -qi 'WordQuiz-dev'"
-    echo "  info  $H"
+  "$NODE_WIN" $NODE_FLAGS "$WIN_DEV_W\\server.mjs" --port $WIN_PORT --no-open >"$TMP/win-server.log" 2>&1 &
+  if H=$(wait_health "curl.exe -s http://localhost:$WIN_PORT/api/databases" 8); then
+    check "server answers /api/databases on Windows"   "echo '$H' | grep -q '\"databases\"'"
+    check "lock file is next to the bundle"            "[ -f '$WIN_DEV/server.lock' ]"
+    check "lock file names a Windows process"          "grep -q '\"port\":$WIN_PORT' '$WIN_DEV/server.lock'"
+    check "another host name is refused (403)"         "curl.exe -s -w '%{http_code}' -H 'Host: evil.example.com' http://localhost:$WIN_PORT/api/databases | grep -q '403$'"
   else
-    fail "Windows server did not answer /health"; cat "$TMP/win-server.log"
+    fail "Windows server did not answer /api/databases"; cat "$TMP/win-server.log"
   fi
 
   if [ -f "$WIN_DEV/sample.xlsx" ]; then
@@ -114,24 +116,23 @@ else
   fi
 
   # A second instance on the same port must refuse with a clear message and exit code 1.
-  timeout 20 "$NODE_WIN" $NODE_FLAGS "$WIN_DEV_W\\server.mjs" --port $WIN_PORT >"$TMP/win-dup.log" 2>&1
+  timeout 20 "$NODE_WIN" $NODE_FLAGS "$WIN_DEV_W\\server.mjs" --port $WIN_PORT --no-open >"$TMP/win-dup.log" 2>&1
   DUP=$?
   check "port in use -> exit code 1"        "[ $DUP -eq 1 ]"
   check "port in use -> clear message"      "grep -q 'already in use' '$TMP/win-dup.log'"
 
-  # Can WORDQUIZ_HOME reach a Windows process? (WSLENV path translation)
+  # Can WORDQUIZ_HOME reach a Windows process? (WSLENV path translation) The lock file shows where it went.
   mkdir -p "$WIN_DEV/envtest"
-  WSLENV=WORDQUIZ_HOME/p WORDQUIZ_HOME="$WIN_DEV/envtest" "$NODE_WIN" $NODE_FLAGS "$WIN_DEV_W\\server.mjs" --port $ENV_PORT >"$TMP/win-env.log" 2>&1 &
-  if E=$(wait_health "curl.exe -s http://localhost:$ENV_PORT/health" 8); then
-    check "WSLENV passes WORDQUIZ_HOME (translated to a Windows path)" "echo '$E' | grep -qi 'WordQuiz-dev.*envtest'"
-    echo "  info  $E"
+  WSLENV=WORDQUIZ_HOME/p WORDQUIZ_HOME="$WIN_DEV/envtest" "$NODE_WIN" $NODE_FLAGS "$WIN_DEV_W\\server.mjs" --port $ENV_PORT --no-open >"$TMP/win-env.log" 2>&1 &
+  if wait_health "curl.exe -s http://localhost:$ENV_PORT/api/databases" 8 >/dev/null; then
+    check "WSLENV passes WORDQUIZ_HOME (the lock file is in that folder)" "[ -f '$WIN_DEV/envtest/server.lock' ]"
   else
     fail "server with WORDQUIZ_HOME did not answer"; cat "$TMP/win-env.log"
   fi
 
   kill_windows_servers; sleep 1
-  check "port $WIN_PORT closed after cleanup" "! curl.exe -s -m 2 http://localhost:$WIN_PORT/health >/dev/null 2>&1"
-  check "port $ENV_PORT closed after cleanup" "! curl.exe -s -m 2 http://localhost:$ENV_PORT/health >/dev/null 2>&1"
+  check "port $WIN_PORT closed after cleanup" "! curl.exe -s -m 2 http://localhost:$WIN_PORT/api/databases >/dev/null 2>&1"
+  check "port $ENV_PORT closed after cleanup" "! curl.exe -s -m 2 http://localhost:$ENV_PORT/api/databases >/dev/null 2>&1"
   check "real install directory untouched"    "[ ! -e /mnt/c/WordQuiz ]"
 fi
 
