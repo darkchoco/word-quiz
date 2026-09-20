@@ -1,4 +1,11 @@
 import { Box, Typography } from '@mui/material';
+import { AllDoneNotice } from '../components/AllDoneNotice';
+import { Done3Dialog } from '../components/Done3Dialog';
+import { EmptyPoolNotice } from '../components/EmptyPoolNotice';
+import { FeedbackPanel } from '../components/FeedbackPanel';
+import { IdlePanel } from '../components/IdlePanel';
+import { QuestionPanel } from '../components/QuestionPanel';
+import { ResultPanel } from '../components/ResultPanel';
 import { NoDbDialog } from '../components/NoDbDialog';
 import { ServerUnreachable } from '../components/ServerUnreachable';
 import { StartScreen } from '../components/StartScreen';
@@ -9,7 +16,7 @@ import { TopBar } from '../components/TopBar';
 
 // Development only (main.tsx imports this only when import.meta.env.DEV): every presentational
 // component in every state, so dialogs and error states can be looked at without a server.
-// #/dev shows all states; #/dev/nodb and #/dev/switch show one dialog open over the page.
+// #/dev shows all states; #/dev/nodb, #/dev/switch and #/dev/done3 show one dialog open over the page.
 
 const noop = () => {};
 const dbs = [
@@ -17,6 +24,24 @@ const dbs = [
   { name: 'latin_2.db', language: 'latin' as const, wordCount: 40 },
 ];
 const stats = { totalWords: 178, tested: 15, correct: 11 };
+const pool = { nextRoundNumber: 12, available: 143, retestRoundNumber: 13, wrongAvailable: 7, questionsPerRound: 20, allDone: false };
+const result = (over: Partial<Parameters<typeof FeedbackPanel>[0]['result']>) => ({
+  verdict: 'perfect' as const,
+  groups: [{ synonyms: ['fassen', 'nehmen'], hit: true }],
+  wordId: 1,
+  askDone: false,
+  canMarkDone: true,
+  stats,
+  round: { roundId: 1, number: 12, mode: 'normal' as const, direction: 'word_to_meaning' as const, total: 20, answered: 3, question: null },
+  summary: null,
+  ...over,
+});
+const question = (over: Partial<Parameters<typeof QuestionPanel>[0]>) => (
+  <QuestionPanel headword="capere, capiō, cēpī, captum" position={3} total={20} progress={2} value="" locked={false} busy={false} onChange={noop} onSubmit={noop} {...over} />
+);
+const feedback = (r: ReturnType<typeof result>, done = false) => (
+  <FeedbackPanel result={r} done={done} blocked={false} busy={false} onMarkDone={noop} onNext={noop} />
+);
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -41,6 +66,7 @@ function Frame() {
 export function Gallery() {
   const route = window.location.hash.replace(/^#\/dev\/?/, '');
   if (route === 'nodb') return (<><Frame /><NoDbDialog open onClose={noop} /></>);
+  if (route === 'done3') return (<><Frame /><Done3Dialog open headword="taurus" onAnswer={noop} /></>);
   if (route === 'switch') return (<><Frame /><SwitchDbDialog open onCancel={noop} onSwitch={noop} /></>);
 
   const start = (over: Partial<Parameters<typeof StartScreen>[0]>) => (
@@ -55,6 +81,25 @@ export function Gallery() {
       <Section title="Start screen, long database name">
         {start({ databases: [{ name: 'latin_vocabulary_for_the_second_semester_2026.db', language: 'latin', wordCount: 5 }], selected: 'latin_vocabulary_for_the_second_semester_2026.db' })}
       </Section>
+      <Section title="Quiz: before a round"><IdlePanel pool={pool} retest={false} busy={false} onStart={noop} /></Section>
+      <Section title="Quiz: before a retest"><IdlePanel pool={pool} retest busy={false} onStart={noop} /></Section>
+      <Section title="Quiz: question"><>{question({})}</></Section>
+      <Section title="Quiz: long headword, long answer">
+        <>{question({ headword: 'pulcherrimus, pulcherrima, pulcherrimum, superlativus von pulcher', value: 'sehr schön, wunderschön, allerschönster, am schönsten' })}</>
+      </Section>
+      <Section title="Quiz: Perfect">
+        <>{question({ value: 'fassen', locked: true, progress: 3 })}{feedback(result({}))}</>
+      </Section>
+      <Section title="Quiz: Partial">
+        <>{question({ value: 'fassen', locked: true, progress: 3 })}{feedback(result({ verdict: 'partial', groups: [{ synonyms: ['fassen', 'nehmen'], hit: true }, { synonyms: ['erobern'], hit: false }] }))}</>
+      </Section>
+      <Section title="Quiz: Wrong (Mark done disabled)">
+        <>{question({ value: 'sehen', locked: true, progress: 3 })}{feedback(result({ verdict: 'wrong', canMarkDone: false, groups: [{ synonyms: ['fassen', 'nehmen'], hit: false }, { synonyms: ['erobern'], hit: false }] }))}</>
+      </Section>
+      <Section title="Quiz: round result"><ResultPanel summary={{ total: 20, correct: 15, percent: 75 }} onAgain={noop} /></Section>
+      <Section title="Quiz: nothing to retest"><EmptyPoolNotice retest onBack={noop} /></Section>
+      <Section title="Quiz: no words available"><EmptyPoolNotice retest={false} onBack={noop} /></Section>
+      <Section title="Quiz: all words done"><AllDoneNotice /></Section>
       <Section title="Frame"><Frame /></Section>
       <Section title="Frame, long database name">
         <TopBar language="latin" db="latin_vocabulary_for_the_second_semester_2026.db" onSwitchDb={noop} />

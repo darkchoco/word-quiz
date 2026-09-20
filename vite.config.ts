@@ -8,6 +8,6 @@ const API_PORT = Number(process.env.WQ_API_PORT ?? 35100);
 export default defineConfig({
   root: 'src/client',
   plugins: [react()],
-  build: { outDir: '../../dist/public', emptyOutDir: true },
+  build: { chunkSizeWarningLimit: 1000, outDir: '../../dist/public', emptyOutDir: true },
   server: { host: '127.0.0.1', proxy: { '/api/': { target: `http://127.0.0.1:${API_PORT}`, changeOrigin: false } } },
 });

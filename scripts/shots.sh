@@ -74,13 +74,21 @@ curl -s -X POST -H 'Content-Type: application/json' -d '{"db":"latin.db"}' "$API
 shot shell-desktop 1100 700 "#/quiz"
 shot shell-mobile 500 800 "phone.html#/words"
 shot shell-dark 1100 700 "#/quiz" dark
+
+echo "== quiz (a round is open: the page continues at its question)"
+curl -s -X POST -H 'Content-Type: application/json' -d '{"mode":"normal","direction":"word_to_meaning"}' "$API/api/rounds" -o /dev/null
+shot quiz-question-desktop 1100 700 "#/quiz"
+shot quiz-question-mobile 500 800 "phone.html#/quiz"
+shot quiz-question-dark 1100 700 "#/quiz" dark
 curl -s -X DELETE "$API/api/session" -o /dev/null
 
 echo "== gallery"
-shot gallery 1000 2600 "#/dev"
-shot gallery-mobile 500 3400 "phone.html#/dev"
+shot gallery 1000 6200 "#/dev"
+shot gallery-mobile 500 9500 "phone.html#/dev"
 shot dialog-nodb 1000 600 "#/dev/nodb"
 shot dialog-switch 1000 600 "#/dev/switch"
+shot dialog-done3 1000 600 "#/dev/done3"
+shot dialog-done3-mobile 500 800 "phone.html#/dev/done3"
 shot dialog-switch-dark 1000 600 "#/dev/switch" dark
 
 echo
