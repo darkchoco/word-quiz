@@ -826,7 +826,7 @@ node --disable-warning=ExperimentalWarning "%~dp0import.mjs" %*
 ### 14.8 M5 클라이언트 골격 확인 (2026-09-20)
 - **자동 테스트**: 클라이언트 71개(전체 926개). 결함 주입 14가지(English 활성화, "Coming soon" 제거, 알림 문구, `NO_SESSION`·`DB_NOT_FOUND` 처리, Switch가 `DELETE`를 안 보냄, 확인창 생략, 상태 바 필드 뒤바뀜, 해시 매핑, `aria-current`, `ApiError` 변환, 네트워크 오류, `localStorage` 예외, 테마 색)을 모두 검출. 첫 실행에서 `NO_SESSION` 분기가 살아남아 `classifyApiError`를 순수 함수로 빼서 테스트했다.
 - **화면 확인**: `npm run shots`로 시작·공통 틀(PC, 390px, 다크)과 대화상자를 찍고 목업과 대조했다. 브라우저 콘솔 오류·경고 0건, 390px에서 가로 스크롤 없음.
-- **환경 관찰**: (1) 헤드리스 Chrome은 창 폭을 약 500px 아래로 줄이지 않아 휴대폰 화면은 iframe(390px)으로 찍는다. (2) 이 Chrome에서 `--blink-settings=preferredColorScheme=0`이 **다크**, `1`은 라이트다. (3) Vite dev 서버의 페이지는 헤드리스에서 비어 찍혔고(모듈 수백 개 로드), 빌드된 앱은 정상이라 스크린샷은 빌드 결과로 찍는다. (4) jsdom에서는 열린 포커스가 없으면 MUI 포커스 트랩이 대화상자를 닫을 때 `document`에 포커스를 주려다 오류가 나서, 테스트 헬퍼가 포커스된 버튼을 먼저 만든다(실제 브라우저에서는 대화상자를 연 버튼이 그 역할).
+- **환경 관찰**: (1) 헤드리스 Chrome은 창 폭을 약 500px 아래로 줄이지 않아 휴대폰 화면은 iframe(390px)으로 찍는다. (2) 이 Chrome에서 `--blink-settings=preferredColorScheme=0`이 **다크**, `1`은 라이트다. (3) **Vite 프록시 접두사 `/api`는 페이지 모듈 `/api.ts`까지 서버로 넘겨 404가 나고 dev 화면이 비었다**(사용자가 브라우저에서 발견, 헤드리스 콘솔에는 오류가 안 보였다). 접두사를 `/api/`로 고치고 `test/vite-config.test.ts`가 지킨다. 스크린샷은 계속 빌드 결과로 찍는다(서버가 실제로 서빙하는 모습). (4) jsdom에서는 열린 포커스가 없으면 MUI 포커스 트랩이 대화상자를 닫을 때 `document`에 포커스를 주려다 오류가 나서, 테스트 헬퍼가 포커스된 버튼을 먼저 만든다(실제 브라우저에서는 대화상자를 연 버튼이 그 역할).
 - **번들**: JS 478KB(gzip 147KB), `dist/public` 약 930KB(폰트 조각 포함). M8 배포 zip 크기에 반영한다.
 
 ---

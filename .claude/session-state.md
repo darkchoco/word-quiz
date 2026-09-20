@@ -23,7 +23,7 @@
 - [x] **M4 완료**: `src/server/{context,routes,app,middleware,hosts,options,lock,browser,network,start,index}.ts`, `services/{session,round,words,settings}.ts`, `db/{rounds,words}.ts`. 테스트 329개 추가(전체 853개/33파일), `npm run smoke:server` Linux·Windows 47/47, 결함 주입 26가지 중 25가지 즉시 검출. **PRD D38 신설**(pool이 비면 라운드 번호를 건너뜀, 교착 방지)
 - [x] M4 커밋 완료(9개, 각각 격리 작업 트리에서 typecheck·테스트 통과 확인). HEAD = `6a7e9d7`
 - [x] **M5 구현 완료 (미커밋, HEAD `6a7e9d7`)**: `src/client/`(theme, fonts, api, app-context(`classifyApiError`), hooks, components 11개, App, ErrorBoundary, main, index.html, dev/Gallery), `vite.config.ts`, `scripts/{dev.mjs,shots.sh}`, `build.mjs`(vite build 추가), `server-e2e.sh`(클라이언트 서빙 검사), `test/client/`(71개), `docs/ui-checks/`(스크린샷 14장). 전체 926개 통과, 결함 주입 14가지 모두 검출, `smoke:win` 24/24·`smoke:win-db`·`smoke:import` 63/63·`smoke:server` 51/51, 브라우저 콘솔 오류 0건, 390px 가로 스크롤 없음. 문서(TECH-SPEC 2.1·2.3·7.2·14.8, EXECUTION-PLAN M5 결과 + UI 컨펌 요청) 갱신 완료
-- [ ] **M5 남은 일**: (a) 커밋(계획 8개: deps/tsconfig, theme+api+state, start screen+dialogs, app shell, Vite/dev/shots scripts, server e2e, docs(+`docs/ui-checks` 스크린샷은 사용자가 원하면 별도), session state) — 메시지 먼저 보여주고 확인, 각 커밋을 격리 worktree에서 검증 (b) **`npm run dev` 화면은 실제 브라우저에서 확인 못 함**(헤드리스 Chrome에서 dev 서버 페이지가 비어 찍힘, 콘솔 오류는 없었음. 빌드 결과는 정상) → 사용자가 열어 보고 비면 원인 조사 (c) 사용자 UI 컨펌
+- [ ] **M5 남은 일**: (a) 커밋(계획 8개: deps/tsconfig, theme+api+state, start screen+dialogs, app shell, Vite/dev/shots scripts, server e2e, docs(+`docs/ui-checks` 스크린샷은 사용자가 원하면 별도), session state) — 메시지 먼저 보여주고 확인, 각 커밋을 격리 worktree에서 검증 (b) `npm run dev` 화면이 비던 원인은 Vite 프록시 `/api`가 `/api.ts`를 가로챈 것이었고 `/api/`로 고쳤다(사용자가 브라우저에서 발견, 헤드리스는 못 잡음) (c) 사용자 UI 컨펌
 - [ ] M6~M9 미구현 (EXECUTION-PLAN 진행 현황 표 참고)
 
 ## 3. 결정과 이유 (상세는 PRD 8.1 D1~D36, TECH-SPEC 1장 T1~T12)
