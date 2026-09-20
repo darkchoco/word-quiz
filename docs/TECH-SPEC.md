@@ -1,6 +1,6 @@
 # Word Quiz 기술 스펙
 
-> 상태: v1.1 (확정) · 작성일: 2026-09-20 · 최종 수정: 2026-09-20  
+> 상태: v1.2 (확정) · 작성일: 2026-09-20 · 최종 수정: 2026-09-20  
 > 기준 문서: `docs/PRD.md` v1.3, `docs/word-quiz-mockup.html`(영어 UI, 컨펌 완료)  
 > 범위: **어떻게 만드는가**. 제품 요구사항은 PRD가, 작업 순서는 별도 실행 계획 문서가 다룬다.
 
@@ -41,6 +41,18 @@
 | 클라이언트 | React + MUI + Vite | 폰트는 `@fontsource`(EB Garamond, IBM Plex Mono)로 번들해 CDN을 쓰지 않는다 |
 | 번들 | esbuild(서버·CLI), Vite(클라이언트) | |
 | 테스트 | vitest | 단일 파일 실행 위주 |
+
+**고정 버전 (M0에서 확정, `package-lock.json`으로 재현)**: 전부 `devDependencies`이며 번들에 포함되므로 배포본에는 `node_modules`가 없다. `.npmrc`의 `save-exact=true`로 범위 없이 고정한다.
+
+| 패키지 | 버전 | 비고 |
+|--------|------|------|
+| `typescript` | 7.0.2 | `tsc -b` 프로젝트 참조와 타입 오류 시 비정상 종료 동작을 확인함 |
+| `@types/node` | 22.20.4 | **최신(26)이 아니라 22.x**. 최소 런타임(Node 22.13)보다 새 API를 타입이 허용하는 것을 줄이기 위함 |
+| `vitest` | 5.0.1 | `node:sqlite` 로드 확인. `ExperimentalWarning`은 `execArgv`로 억제 |
+| `esbuild` | 0.28.2 | |
+| `read-excel-file` | 9.3.10 | 번들 성공, 빈 셀은 `null` |
+
+**tsconfig 규칙**: `module: ESNext` + `moduleResolution: Bundler`, `strict`, `noUncheckedIndexedAccess`, `verbatimModuleSyntax`. 서버·CLI·클라이언트가 모두 번들되므로 확장자 없는 import를 쓴다(`NodeNext`는 `.ts` 확장자를 강제해 부적합). `package.json`에는 `"type":"module"`이 필수다(없으면 TS1295 오류). `tsconfig.client.json`은 React 도입 시점인 M5에 추가한다.
 
 ### 2.2 저장소 구조
 ```
@@ -563,6 +575,8 @@ node --disable-warning=ExperimentalWarning "%~dp0import.mjs" %*
 | 사용자가 고친 뜻을 재 import가 덮어씀 | 수정 내용 손실 | 갱신 항목의 이전 → 이후 값을 리포트에 표시하고 반영 전에 자동 백업 |
 | 제출 후 뜻 수정으로 과거 `hits`가 어긋남 | 이력 표시 오류 | 이번 범위에 이력 화면이 없어 영향 없음. 이력 화면을 만들 때 스냅샷 컬럼을 추가한다 |
 | 두 기기에서 동시 접속 | 같은 세션을 함께 조작 | 단일 사용자 전제. 두 번째 기기는 같은 세션 상태를 그대로 본다 |
+| `@types/node` 22.20이 Node 22.13에 없는 API를 허용 | 타입 검사는 통과하지만 최소 버전에서 실행 시 오류 | 완전히 막을 수 없는 잔여 위험. 새 Node API를 쓸 때 도입 버전을 확인하고, 사용자 PC의 Node 버전을 M9 수동 체크리스트로 확인한다 |
+| TypeScript 7·vitest 5 등 최신 메이저가 이후 도입 라이브러리(Vite, MUI)와 어긋남 | 설치·빌드 실패 | 라이브러리 도입 시(M5) 즉시 `tsc -b`와 테스트를 돌려 확인하고, 문제가 있으면 TypeScript 6.x로 내린다(lockfile로 복원 가능) |
 | `.bat`이 LF로 저장됨 | `cmd.exe`에서 오작동 | `.gitattributes` + 빌드 시 CRLF 변환 + 배포본 줄바꿈 검증 (T14) |
 | 대소문자만 다른 DB 이름 | Windows에서 충돌, 다른 파일을 덮어씀 | 이름 중복 검사를 대소문자 무시로 (T13) |
 | 실행 중인 서버를 두고 `deploy` | 옛 서버와 새 `public/` 불일치 | `server.lock` 검사 (T16) |
@@ -639,6 +653,23 @@ node --disable-warning=ExperimentalWarning "%~dp0import.mjs" %*
 | `node_modules` 없는 디렉터리에서 실행 | 성공 (`createRequire` 배너 필요, 없으면 `Dynamic require of "fs"` 오류) |
 | 샘플 xlsx 읽기 | 시트 `Wortschatz` 179행(헤더 포함), 빈 셀은 `null`, 헤더 `["단어","뜻1","뜻2","뜻3","뜻4","노트"]` |
 | 번들 안에서 `node:sqlite` import | 정상 (external) |
+
+### 14.4 M0 Windows 스모크 (2026-09-20, `npm run smoke:win`)
+전 항목 통과(20/20). 스모크용 최소 서버·CLI를 번들해 확인했다.
+
+| 검증 | 결과 |
+|------|------|
+| Linux: `node_modules` 없이 번들 실행 | 성공. 서버 `/health`, CLI가 178행·한글 헤더·장음 기호를 읽음. `SIGTERM` 시 DB를 닫고 파일 삭제 |
+| Windows: `C:\WordQuiz-dev`에 배포한 번들을 `node.exe`(v24.14.0)로 실행 | 성공. `platform: win32`, SQLite 3.51.2, 파일 DB 생성·조회 |
+| Windows: xlsx를 읽어 UTF-8로 출력(파일로 리다이렉트해 바이트 확인) | 한글 `단어`, 장음 기호 `ī`가 깨지지 않음 |
+| Windows: 같은 포트로 두 번째 기동 | 안내 메시지와 종료 코드 1 |
+| `WSLENV=WORDQUIZ_HOME/p`로 환경변수 전달 | **성공.** `/mnt/c/...` 경로가 `C:\...`로 변환되어 `appHome`에 반영됨 |
+| 정리 | 스크립트가 띄운 `node.exe`만 종료, 남은 프로세스 0, 포트 닫힘, 실제 `C:\WordQuiz` 미생성 |
+| 번들 크기 | `server.mjs` 2KB(스모크용), `import.mjs` 210KB |
+
+- 이 PC의 Windows Node는 24.14이므로 **최소 버전 22.13은 검증되지 않았다**(M9 수동 체크리스트).
+- `read-excel-file`은 TS 소스에서 esbuild 번들로 성공했다. `fflate` 대체안은 필요하지 않다.
+- `createRequire` 배너를 `scripts/build.mjs`에 넣었다(없으면 Windows·Linux 모두 `Dynamic require` 오류).
 
 ---
 

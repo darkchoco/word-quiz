@@ -1,7 +1,7 @@
 # Word Quiz 실행 계획
 
-> 상태: v1.1 (초안 · 리뷰 대기) · 작성일: 2026-09-20  
-> 기준 문서: `docs/PRD.md` v1.3, `docs/TECH-SPEC.md` v1.1, `docs/word-quiz-mockup.html`  
+> 상태: v1.2 (진행 중 · M0 완료) · 작성일: 2026-09-20  
+> 기준 문서: `docs/PRD.md` v1.3, `docs/TECH-SPEC.md` v1.2, `docs/word-quiz-mockup.html`  
 > 범위: **무엇을 어떤 순서로 만들고 어떻게 확인하는가**. 요구사항은 PRD, 설계는 기술 스펙이 다룬다.
 
 ---
@@ -21,7 +21,7 @@
 
 | # | 마일스톤 | 크기 | 상태 |
 |---|----------|------|------|
-| M0 | 프로젝트 골격 + Windows 스모크 | S | [ ] |
+| M0 | 프로젝트 골격 + Windows 스모크 | S | [x] 2026-09-20 |
 | M1 | 공용 규칙 (`src/shared`) | M | [ ] |
 | M2 | DB 계층 | M | [ ] |
 | M3 | Import CLI | L | [ ] |
@@ -54,12 +54,18 @@
 
 | 구분 | 내용 |
 |------|------|
-| 산출물 | `package.json`(`"type":"module"`, `engines.node ">=22.13"`, **의존성 정확한 버전 고정**), `package-lock.json`, `tsconfig.base.json` / `tsconfig.node.json` / `tsconfig.client.json`, `vitest.config.ts`, `.gitignore`, **`.gitattributes`**(`*.bat text eol=crlf`, 소스 `eol=lf`), `scripts/build.mjs`(골격), 스모크용 최소 `src/server/index.ts`(HTTP + `node:sqlite`)와 `src/cli/index.ts`(`read-excel-file`로 xlsx 읽기), `test/smoke.test.ts`, `scripts/win-smoke.sh` |
+| 산출물 | `package.json`(`"type":"module"`, `engines.node ">=22.13"`, **의존성 정확한 버전 고정**), `package-lock.json`, `tsconfig.base.json` / `tsconfig.node.json` / 루트 `tsconfig.json`(**`tsconfig.client.json`은 M5로 이동**: 입력 파일이 없으면 `tsc -b`가 TS18003으로 실패), `.npmrc`(`save-exact`), `.gitattributes`, `vitest.config.ts`, `.gitignore`, **`.gitattributes`**(`*.bat text eol=crlf`, 소스 `eol=lf`), `scripts/build.mjs`(골격), 스모크용 최소 `src/server/index.ts`(HTTP + `node:sqlite`)와 `src/cli/index.ts`(`read-excel-file`로 xlsx 읽기), `test/smoke.test.ts`, `scripts/win-smoke.sh` |
 | `.gitignore` | `node_modules/`, `dist/`, `release/*.zip`, 개발용 `WORDQUIZ_HOME` 디렉터리. **`data/`는 사용자 결정에 따라 untracked로 두고 `.gitignore`에도 넣지 않는다** |
 | 완료 기준 | ① `npm run typecheck` 오류 0 ② `npm test` 통과 ③ `npm run build`가 `dist/server.mjs`, `dist/import.mjs`를 만든다 ④ `node_modules` 없는 임시 디렉터리에 번들만 복사해 Linux에서 실행 성공 ⑤ 같은 번들을 `C:\WordQuiz-dev`에 배포해 **`node.exe`로 실행**하면 서버가 응답하고 xlsx를 읽는다 |
 | 검증 | `npm run typecheck`, `npm test -- smoke`, `npm run build`, `bash scripts/win-smoke.sh`(배포 → `node.exe` 기동 → `curl.exe` 응답 확인 → 자신이 띄운 프로세스만 종료) |
 | 판별할 것 | `read-excel-file` 번들 성공 여부(실패 시 `fflate` + 최소 XML 파서로 대체를 결정), Windows 프로세스에 `WORDQUIZ_HOME`을 넘기는 방법(`WSLENV`), 최종 고정 버전 목록 |
 | 커밋 제안 | `chore: Scaffold project with TypeScript and vitest` / `chore: Add bundle build script` / `test: Add Windows bundle smoke check` |
+
+**M0 결과 (2026-09-20)**: 완료 기준 ①~⑤ 전부 충족. 스모크 20/20 통과.
+- 판별 결과: `read-excel-file` 번들 성공(대체안 불필요), `WSLENV=WORDQUIZ_HOME/p`로 Windows 프로세스에 환경변수 전달 가능, vitest `ExperimentalWarning`은 `execArgv`로 억제됨.
+- 고정 버전과 tsconfig 결정(`Bundler` 해석, `@types/node` 22.x)은 TECH-SPEC 2.1에 기록했고, 스모크 상세는 TECH-SPEC 14.4에 있다.
+- `npm run typecheck` / `npm test -- smoke` / `npm run build` / `npm run smoke:win`이 이후 마일스톤의 기본 검증 명령이다.
+- 최소 버전 Node 22.13은 이 PC(24.14)에서 검증할 수 없어 M9 수동 체크리스트에 남는다.
 
 ### M1. 공용 규칙 `src/shared` (M)
 | 구분 | 내용 |
@@ -100,7 +106,7 @@
 ### M5. 클라이언트 골격 · 시작 · 공통 (M)
 | 구분 | 내용 |
 |------|------|
-| 산출물 | Vite 설정(`/api` 프록시), `theme.ts`(목업 토큰, 다크 모드, `@fontsource` 폰트), `api.ts`(fetch 래퍼, `ApiError`), hash 훅, `App`, `StartScreen`, `Shell`, `TopBar`, `Tabs`, `StatusBar`, `NoDbDialog`, `SwitchDbDialog` |
+| 산출물 | **`tsconfig.client.json`**(`lib` DOM, `jsx`; 도입 즉시 TS 7·vitest 5와의 호환을 `tsc -b`로 확인), Vite 설정(`/api` 프록시), `theme.ts`(목업 토큰, 다크 모드, `@fontsource` 폰트), `api.ts`(fetch 래퍼, `ApiError`), hash 훅, `App`, `StartScreen`, `Shell`, `TopBar`, `Tabs`, `StatusBar`, `NoDbDialog`, `SwitchDbDialog` |
 | 완료 기준 | ① 시작 화면에서 언어(English는 "Coming soon"으로 비활성)와 DB를 골라 시작하면 `Shell`이 뜬다 ② 없는 DB → "The selected DB does not exist." 알림 후 시작 화면 복귀 ③ Switch DB → 확인 후 새 세션, 상태 바 0으로 초기화 ④ 상단 DB 표시·탭·하단 상태 바가 목업 5.1~5.2 구조와 일치 ⑤ 390px 폭에서 가로 스크롤 없음 ⑥ 콘솔 오류 없음 |
 | 검증 | 서버 + Vite dev 서버를 띄워 브라우저로 확인, 목업과 나란히 비교. `npm run typecheck` |
 | 커밋 제안 | `feat: Add client scaffold and theme` / `feat: Add start screen and app shell` |
