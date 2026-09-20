@@ -284,9 +284,10 @@ applyResult(p: Progress, verdict: Verdict, n: number): { progress: Progress; ask
 - 재시험 라운드도 같은 규칙을 적용하고, 라운드 번호를 소비한다.
 
 ### 4.3 pool과 라운드 구성
-- `pool` = `done = 0 AND next_round <= 다음 라운드 번호`. 재시험은 `wrong_mark = 1`을 추가한다.
+- `pool` = `done = 0 AND next_round <= 시작 라운드 번호`. 재시험은 `wrong_mark = 1`을 추가한다.
+- **시작 라운드 번호(D38, M4)**: 기본은 `nextRoundNumber`(= 최대 라운드 번호 + 1)이다. 그런데 이 번호에서 pool이 비면(모든 단어가 N+2·N+3으로 밀려 있는 경우) 그대로는 **영원히 시작할 수 없다**(라운드 번호는 시작해야만 올라간다). 그래서 pool이 비고 완료되지 않은 단어(재시험이면 오답 마크된 미완료 단어)가 남아 있으면 **그 단어들의 가장 이른 `next_round`를 시작 번호로 삼는다**(빈 라운드를 건너뜀, 번호는 증가만 하면 되므로 스키마에 문제없음). `PoolInfo.nextRoundNumber`·`available`은 건너뛴 뒤의 값이다. 단어 관리에서 완료를 해제할 때의 `next_round = min(next_round, 다음 라운드 번호)`는 그대로 `nextRoundNumber`를 쓴다.
 - 문제 수 = `min(설정값, pool 크기)`. 무작위 추출은 SQLite `ORDER BY RANDOM()`.
-- pool이 비면 `POOL_EMPTY`, 전 단어가 완료면 `ALL_DONE`(전용 안내 화면)로 구분한다. 재시험에서 오답 마크된 단어가 없으면 `POOL_EMPTY`.
+- 위 규칙을 적용한 뒤에도 출제할 단어가 없는 경우를 구분한다: 전 단어가 완료면 `ALL_DONE`(전용 안내 화면), 단어가 하나도 없는 DB나 재시험에서 완료되지 않은 오답 마크 단어가 없으면 `POOL_EMPTY`.
 - 방향: Latin은 `word_to_meaning`만 허용하고 다른 값은 `DIRECTION_UNSUPPORTED`. `meaning_to_word`·`mix`는 English 지원 시 구현한다(타입과 컬럼은 미리 둔다).
 
 ### 4.4 뜻 수정 형식 (`meanings.ts`)
