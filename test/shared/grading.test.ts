@@ -1,6 +1,13 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { grade, normalize, splitTop, variants } from '../../src/shared/grading';
+import {
+  grade,
+  hasUnmatchedParens,
+  normalize,
+  splitTop,
+  splitTopRaw,
+  variants,
+} from '../../src/shared/grading';
 
 interface FixtureRow {
   row: number;
@@ -46,6 +53,39 @@ describe('splitTop', () => {
   it('does not treat spaces as separators', () => {
     expect(splitTop('sich setzen, sich niederlassen')).toEqual(['sich setzen', 'sich niederlassen']);
   });
+});
+
+describe('splitTopRaw', () => {
+  it('keeps empty and padded pieces', () => {
+    expect(splitTopRaw('a,,b')).toEqual(['a', '', 'b']);
+    expect(splitTopRaw(' a , b ')).toEqual([' a ', ' b ']);
+    expect(splitTopRaw(',a,')).toEqual(['', 'a', '']);
+    expect(splitTopRaw('')).toEqual(['']);
+  });
+
+  it('still protects commas inside parentheses', () => {
+    expect(splitTopRaw('der (die, das) zweite,, x')).toEqual(['der (die, das) zweite', '', ' x']);
+  });
+
+  it('agrees with splitTop once padding and empty pieces are removed', () => {
+    for (const text of ['a,,b', ' a , b ', 'x (y, z), w', '(', 'a) , b (', '']) {
+      const cleaned = splitTopRaw(text).map((p) => p.trim()).filter((p) => p.length > 0);
+      expect(splitTop(text), text).toEqual(cleaned);
+    }
+  });
+});
+
+describe('hasUnmatchedParens', () => {
+  it.each([
+    ['plain text', false],
+    ['(zusammen)werfen', false],
+    ['a (b (c) d) e', false],
+    ['a (b', true],
+    ['a) b', true],
+    [') (', true],
+    ['((a)', true],
+    ['', false],
+  ])('%j -> %s', (text, expected) => expect(hasUnmatchedParens(text)).toBe(expected));
 });
 
 describe('normalize', () => {

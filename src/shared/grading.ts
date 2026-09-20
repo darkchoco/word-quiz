@@ -38,11 +38,22 @@ function removeParentheticals(s: string): string {
   return out;
 }
 
+/** True if the text has a "(" or ")" that has no partner. */
+export function hasUnmatchedParens(s: string): boolean {
+  const paired = pairedParens(s);
+  for (let i = 0; i < s.length; i++) {
+    const ch = s.charAt(i);
+    if ((ch === '(' || ch === ')') && !paired.has(i)) return true;
+  }
+  return false;
+}
+
 /**
- * Splits on commas that are outside matched parentheses (PRD D35).
- * Items are trimmed and empty items are dropped.
+ * Splits on commas that are outside matched parentheses (PRD D35) and returns the pieces
+ * exactly as they are, including empty and padded ones. The import CLI uses this to notice
+ * an empty synonym such as the one in "a,,b".
  */
-export function splitTop(s: string): string[] {
+export function splitTopRaw(s: string): string[] {
   const paired = pairedParens(s);
   const parts: string[] = [];
   let depth = 0;
@@ -56,7 +67,17 @@ export function splitTop(s: string): string[] {
     }
   }
   parts.push(s.slice(start));
-  return parts.map((p) => p.trim()).filter((p) => p.length > 0);
+  return parts;
+}
+
+/**
+ * Splits on commas that are outside matched parentheses (PRD D35).
+ * Items are trimmed and empty items are dropped.
+ */
+export function splitTop(s: string): string[] {
+  return splitTopRaw(s)
+    .map((p) => p.trim())
+    .filter((p) => p.length > 0);
 }
 
 /**
