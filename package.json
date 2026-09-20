@@ -14,16 +14,34 @@
     "smoke:win": "bash scripts/win-smoke.sh",
     "smoke:win-db": "bash scripts/win-db-check.sh",
     "smoke:import": "bash scripts/import-e2e.sh",
-    "smoke:server": "bash scripts/server-e2e.sh"
+    "smoke:server": "bash scripts/server-e2e.sh",
+    "dev": "node scripts/dev.mjs",
+    "dev:seed": "node scripts/dev.mjs --seed",
+    "shots": "bash scripts/shots.sh"
   },
   "devDependencies": {
+    "@emotion/react": "11.14.0",
+    "@emotion/styled": "11.14.1",
+    "@fontsource/eb-garamond": "5.3.0",
+    "@fontsource/ibm-plex-mono": "5.3.0",
+    "@mui/material": "9.4.0",
+    "@testing-library/jest-dom": "7.0.1",
+    "@testing-library/react": "16.3.3",
+    "@testing-library/user-event": "14.6.7",
     "@types/express": "5.0.6",
     "@types/node": "22.20.4",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "@vitejs/plugin-react": "6.1.1",
     "esbuild": "0.28.2",
     "express": "5.2.1",
     "fflate": "0.8.3",
+    "jsdom": "30.1.0",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
     "read-excel-file": "9.3.10",
     "typescript": "7.0.2",
+    "vite": "8.3.0",
     "vitest": "5.0.1"
   }
 }

@@ -1,10 +1,22 @@
 {
   "extends": "./tsconfig.base.json",
   "compilerOptions": {
-    "types": ["node"],
+    "types": [
+      "node"
+    ],
     "composite": true,
     "emitDeclarationOnly": true,
     "outDir": "./.tsbuild/node"
   },
-  "include": ["src/shared", "src/server", "src/cli", "test", "vitest.config.ts"]
+  "include": [
+    "src/shared",
+    "src/server",
+    "src/cli",
+    "test",
+    "vitest.config.ts",
+    "vite.config.ts"
+  ],
+  "exclude": [
+    "test/client"
+  ]
 }
