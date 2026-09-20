@@ -1,14 +1,15 @@
-// Smoke-test CLI (M0): proves that the xlsx reader bundles and reads UTF-8 correctly.
-// The real import CLI replaces this in M3.
-import { readSheet } from 'read-excel-file/node';
+import { appHome } from '../server/paths';
+import { runImport } from './run';
 
-const file = process.argv[2];
-if (!file) {
-  console.error('Usage: import.mjs <file.xlsx>');
-  process.exit(2);
-}
+// When the output is piped into something that stops reading early (`| head`, `| more`), the
+// write fails with EPIPE. That is not an error of the import, so it must not crash the program.
+process.stdout.on('error', (error: NodeJS.ErrnoException) => {
+  if (error.code !== 'EPIPE') throw error;
+});
 
-const rows = await readSheet(file);
-console.log(`header: ${JSON.stringify(rows[0])}`);
-console.log(`rows: ${rows.length - 1}`);
-for (const row of rows.slice(1, 4)) console.log(`sample: ${JSON.stringify(row[0])}`);
+process.exitCode = await runImport(process.argv.slice(2), {
+  home: appHome(),
+  now: new Date(),
+  out: (text) => process.stdout.write(text),
+  err: (text) => process.stderr.write(text),
+});
