@@ -1,7 +1,7 @@
 # Word Quiz 실행 계획
 
-> 상태: v1.0 (초안 · 리뷰 대기) · 작성일: 2026-09-20  
-> 기준 문서: `docs/PRD.md` v1.2, `docs/TECH-SPEC.md` v1.0, `docs/word-quiz-mockup.html`  
+> 상태: v1.1 (초안 · 리뷰 대기) · 작성일: 2026-09-20  
+> 기준 문서: `docs/PRD.md` v1.3, `docs/TECH-SPEC.md` v1.1, `docs/word-quiz-mockup.html`  
 > 범위: **무엇을 어떤 순서로 만들고 어떻게 확인하는가**. 요구사항은 PRD, 설계는 기술 스펙이 다룬다.
 
 ---
@@ -54,8 +54,8 @@
 
 | 구분 | 내용 |
 |------|------|
-| 산출물 | `package.json`(`"type":"module"`, `engines.node ">=22.13"`, **의존성 정확한 버전 고정**), `package-lock.json`, `tsconfig.base.json` / `tsconfig.node.json` / `tsconfig.client.json`, `vitest.config.ts`, `.gitignore`, `scripts/build.mjs`(골격), 스모크용 최소 `src/server/index.ts`(HTTP + `node:sqlite`)와 `src/cli/index.ts`(`read-excel-file`로 xlsx 읽기), `test/smoke.test.ts`, `scripts/win-smoke.sh` |
-| `.gitignore` | `node_modules/`, `dist/`, `release/*.zip`, 개발용 `WORDQUIZ_HOME` 디렉터리. **`data/`는 사용자 결정 전까지 건드리지 않는다** |
+| 산출물 | `package.json`(`"type":"module"`, `engines.node ">=22.13"`, **의존성 정확한 버전 고정**), `package-lock.json`, `tsconfig.base.json` / `tsconfig.node.json` / `tsconfig.client.json`, `vitest.config.ts`, `.gitignore`, **`.gitattributes`**(`*.bat text eol=crlf`, 소스 `eol=lf`), `scripts/build.mjs`(골격), 스모크용 최소 `src/server/index.ts`(HTTP + `node:sqlite`)와 `src/cli/index.ts`(`read-excel-file`로 xlsx 읽기), `test/smoke.test.ts`, `scripts/win-smoke.sh` |
+| `.gitignore` | `node_modules/`, `dist/`, `release/*.zip`, 개발용 `WORDQUIZ_HOME` 디렉터리. **`data/`는 사용자 결정에 따라 untracked로 두고 `.gitignore`에도 넣지 않는다** |
 | 완료 기준 | ① `npm run typecheck` 오류 0 ② `npm test` 통과 ③ `npm run build`가 `dist/server.mjs`, `dist/import.mjs`를 만든다 ④ `node_modules` 없는 임시 디렉터리에 번들만 복사해 Linux에서 실행 성공 ⑤ 같은 번들을 `C:\WordQuiz-dev`에 배포해 **`node.exe`로 실행**하면 서버가 응답하고 xlsx를 읽는다 |
 | 검증 | `npm run typecheck`, `npm test -- smoke`, `npm run build`, `bash scripts/win-smoke.sh`(배포 → `node.exe` 기동 → `curl.exe` 응답 확인 → 자신이 띄운 프로세스만 종료) |
 | 판별할 것 | `read-excel-file` 번들 성공 여부(실패 시 `fflate` + 최소 XML 파서로 대체를 결정), Windows 프로세스에 `WORDQUIZ_HOME`을 넘기는 방법(`WSLENV`), 최종 고정 버전 목록 |
@@ -74,7 +74,7 @@
 | 구분 | 내용 |
 |------|------|
 | 산출물 | `migrations.ts`(v1 = TECH-SPEC 3.3 DDL), `open.ts`(PRAGMA, 버전 가드, 고아 세션 보정), `queries.ts`(pool, 상태 바, 다음 라운드 번호 등), `names.ts`(DB 이름 검증, `data/` 스캔), 테스트 |
-| 완료 기준 | ① 빈 DB에서 마이그레이션이 v1 스키마를 만들고 재실행해도 변화 없음 ② 코드보다 높은 `user_version`이면 `DB_TOO_NEW` ③ 고아 세션(`ended_at IS NULL`)이 열 때 `last_seen_at`으로 닫힘 ④ pool 경계: `next_round == n`은 포함, `n-1`(즉 `next_round > n`)은 제외, `done`은 제외, 재시험은 `wrong_mark = 1`만 ⑤ DB 이름 검증이 `latin.db`, `latin_2.db`는 통과시키고 `../x.db`, `a/b.db`, `x.txt`, 빈 문자열, `a b.db`는 거부 ⑥ UNIQUE(`errcode 2067`)·CHECK·FK 위반이 도메인 오류로 변환됨 ⑦ 스캔이 `meta`가 없는 파일을 목록에서 뺌 |
+| 완료 기준 | ① 빈 DB에서 마이그레이션이 v1 스키마를 만들고 재실행해도 변화 없음 ② 코드보다 높은 `user_version`이면 `DB_TOO_NEW` ③ 고아 세션(`ended_at IS NULL`)이 열 때 `last_seen_at`으로 닫힘 ④ pool 경계: `next_round == n`은 포함, `n-1`(즉 `next_round > n`)은 제외, `done`은 제외, 재시험은 `wrong_mark = 1`만 ⑤ DB 이름 검증이 `latin.db`, `latin_2.db`는 통과시키고 `../x.db`, `a/b.db`, `x.txt`, 빈 문자열, `a b.db`는 거부 ⑥ UNIQUE(`errcode 2067`)·CHECK·FK 위반이 도메인 오류로 변환됨 ⑦ 스캔이 `meta`가 없는 파일을 목록에서 뺌 ⑧ `Latin.db`와 `latin.db`를 **같은 이름으로 판정**(T13)하고, 스캔에서 대소문자만 다른 두 파일이 있으면 경고 |
 | 검증 | `npm test -- db`. 임시 디렉터리 DB와 `:memory:` 사용 |
 | 커밋 제안 | `feat: Add SQLite migrations and connection` / `feat: Add DB queries and name validation` |
 
@@ -82,7 +82,7 @@
 | 구분 | 내용 |
 |------|------|
 | 산출물 | `xlsx.ts`(헤더 이름 매핑), `validate.ts`(오류·경고), `plan.ts`(기존 DB 비교), `report.ts`, `index.ts`(인자 파싱, 종료 코드), `apply`(백업 + 한 트랜잭션), `release/import.bat`, 테스트와 소형 xlsx 픽스처 |
-| 완료 기준 | ① 검증 모드(기본)는 DB 파일을 **만들지도 바꾸지도 않는다**(수정 시각 불변) ② 오류(빈 표제어, 뜻 없음, 파일 내 중복, `\|` 포함)가 있으면 `--apply`가 종료 코드 1로 **아무것도 쓰지 않는다** ③ merge에서 기존 단어의 진행 상태(`streak`, `wrong_mark`, `next_round`, `done`)가 보존됨 ④ Excel에서 사라진 단어는 삭제되지 않고 리포트에만 나온다 ⑤ 갱신 항목에 이전 → 이후 값이 리포트에 표시됨 ⑥ `--apply`(merge) 직전에 `data/backup/`에 복사본이 생김 ⑦ `--new-db`는 이미 있는 이름이면 오류 ⑧ 리포트가 stdout과 파일에 UTF-8로 같은 내용으로 저장됨 |
+| 완료 기준 | ① 검증 모드(기본)는 DB 파일을 **만들지도 바꾸지도 않는다**(수정 시각 불변) ② 오류(빈 표제어, 뜻 없음, 파일 내 중복, `\|` 포함)가 있으면 `--apply`가 종료 코드 1로 **아무것도 쓰지 않는다** ③ merge에서 기존 단어의 진행 상태(`streak`, `wrong_mark`, `next_round`, `done`)가 보존됨 ④ Excel에서 사라진 단어는 삭제되지 않고 리포트에만 나온다 ⑤ 갱신 항목에 이전 → 이후 값이 리포트에 표시됨 ⑥ `--apply`(merge) 직전에 `data/backup/`에 복사본이 생김 ⑦ `--new-db`는 이미 있는 이름이면 오류(**대소문자 무시**, 예: `latin.db`가 있을 때 `Latin`) ⑧ 리포트가 stdout과 파일에 UTF-8로 같은 내용으로 저장됨 |
 | **종단 검증** | 임시 `WORDQUIZ_HOME`에서 실제 샘플로: 검증 모드(DB 없음, 178 추가 예정) → `--new-db latin --lang latin --apply`(178단어 적재) → 같은 파일로 검증 재실행(**178 전부 "변경 없음"**) → 한 셀을 바꾼 사본으로 재실행(1건 "갱신", 이전 → 이후 표시) |
 | 검증 | `npm test -- cli`, 위 종단 절차, 리포트 육안 확인(사용자 확인 시점) |
 | 커밋 제안 | `feat: Add xlsx reader and validation` / `feat: Add import plan and report` / `feat: Add import apply with backup` / `feat: Add import.bat launcher` |
@@ -91,9 +91,9 @@
 | 구분 | 내용 |
 |------|------|
 | 산출물 | `src/server/services/`(session, round, words, settings), `routes/`, `app.ts`(미들웨어), `index.ts`(진입점), 정적 파일 서빙, 종료 처리, 테스트 |
-| 미들웨어 | `Host` 헤더 검사(단일 이름·사설 IPv4·`127.0.0.1`·`[::1]`만 허용), 쓰기 요청 `Content-Type: application/json` 요구, CORS 헤더 미전송, JSON 100KB 제한, 오류 응답 규약(`{error:{code,message}}`) |
-| 서버 동작 | `listen` 성공 후 브라우저 열기(`--no-open`으로 끔), `--local-only`, `PORT`, `EADDRINUSE` 시 안내 후 브라우저만 열고 종료, `last_seen_at` 30초 스로틀 갱신, 종료 시그널(`SIGINT`, `SIGTERM`, `SIGHUP`, `SIGBREAK`)에서 세션 `ended_at` 기록 |
-| 완료 기준 | ① TECH-SPEC 5.1의 모든 엔드포인트가 명시된 오류 코드를 반환 ② **다중 라운드 시나리오 테스트** 통과: 라운드 N에서 Perfect → N+1 pool에 없고 N+2에 있음, 두 번째 Perfect → N+3, 세 번째 Perfect에서 `askDone`, 오답 → N+1에 재출제, 부분 정답이 상태 바 정답에 안 들어감, 완료 표시와 해제, 재시험은 오답 마크만 ③ 제출이 한 트랜잭션(도중 실패 시 `word_progress` 불변) ④ 새로고침(`GET /rounds/current`)으로 이어서 풀기 ⑤ 잘못된 `Host`·잘못된 `Content-Type`이 거부됨 ⑥ 종료 처리 함수를 호출하면 `ended_at`이 기록됨, **Linux에서 실제 `SIGTERM`을 보내는 통합 테스트**도 통과 ⑦ DB 파일이 사라진 상태에서 `DB_NOT_FOUND` |
+| 미들웨어 | `Host` 헤더 검사(단일 이름·사설 IPv4·`127.0.0.1`·`[::1]`만 허용), 쓰기 요청 `Content-Type: application/json` 요구, CORS 헤더 미전송, JSON 100KB 제한, 오류 응답 규약(`{error:{code,message}}`), **허용 Host 추가 설정**(`WORDQUIZ_ALLOWED_HOSTS`, `--allow-host`, T15) |
+| 서버 동작 | `listen` 성공 후 브라우저 열기(`--no-open`으로 끔), `--local-only`, `PORT`, `EADDRINUSE` 시 안내 후 브라우저만 열고 종료, `last_seen_at` 30초 스로틀 갱신, **`server.lock` 생성·종료 시 삭제**(T16), 종료 시그널(`SIGINT`, `SIGTERM`, `SIGHUP`, `SIGBREAK`)에서 세션 `ended_at` 기록 |
+| 완료 기준 | ① TECH-SPEC 5.1의 모든 엔드포인트가 명시된 오류 코드를 반환 ② **다중 라운드 시나리오 테스트** 통과: 라운드 N에서 Perfect → N+1 pool에 없고 N+2에 있음, 두 번째 Perfect → N+3, 세 번째 Perfect에서 `askDone`, 오답 → N+1에 재출제, 부분 정답이 상태 바 정답에 안 들어감, 완료 표시와 해제, 재시험은 오답 마크만 ③ 제출이 한 트랜잭션(도중 실패 시 `word_progress` 불변) ④ 새로고침(`GET /rounds/current`)으로 이어서 풀기 ⑤ 잘못된 `Host`·잘못된 `Content-Type`이 거부됨 ⑥ 종료 처리 함수를 호출하면 `ended_at`이 기록됨, **Linux에서 실제 `SIGTERM`을 보내는 통합 테스트**도 통과 ⑦ DB 파일이 사라진 상태에서 `DB_NOT_FOUND` ⑧ `nas.local` 같은 점 포함 Host가 기본 설정에서는 403이고 `--allow-host nas.local`을 주면 200 ⑨ 서버 기동 시 `server.lock`이 생기고 정상 종료 시 사라지며, 남아 있어도 다음 기동이 덮어씀 |
 | 검증 | `npm test -- server`(가능하면 파일별로 `npm test -- rounds`), `app.listen(0)` + `fetch` |
 | 커밋 제안 | `feat: Add session and settings API` / `feat: Add round and answer API` / `feat: Add words API` / `feat: Add request guards and graceful shutdown` |
 
@@ -124,8 +124,8 @@
 ### M8. 번들 · 패키징 · 배포 (M)
 | 구분 | 내용 |
 |------|------|
-| 산출물 | `scripts/build.mjs` 완성(Vite + esbuild + `createRequire` 배너), `package`(zip, `fflate`), `deploy`(`DEPLOY_DIR`, 기본 `/mnt/c/WordQuiz`; **`data/`·`reports/` 보존**), `release/start.bat`, `release/import.bat` |
-| 완료 기준 | ① `npm run build` 후 `dist/`에 `server.mjs`, `import.mjs`, `public/` ② `npm run package`가 zip을 만들고 **`node_modules` 없는 임시 디렉터리에 풀어 서버 기동·`GET /api/databases` 응답까지 확인하는 스모크**를 통과 ③ `deploy`를 두 번 실행해도 `data/`의 DB와 `reports/`가 그대로 ④ `start.bat`에 `chcp 65001`, Node 버전 검사(22.13 미만이면 안내 후 종료), 마지막 `pause` ⑤ 버전 검사 스니펫이 `22.12.0`은 거부하고 `22.13.0`, `24.14.0`은 통과(스니펫만 단위 실행) |
+| 산출물 | `scripts/build.mjs` 완성(Vite + esbuild + `createRequire` 배너), `package`(zip, `fflate`), `deploy`(`DEPLOY_DIR`, 기본 `/mnt/c/WordQuiz`; **`data/`·`reports/` 보존**, **`server.lock`이 있으면 중단·`--force`로 진행**), `release/start.bat`, `release/import.bat`(**CRLF, BOM 없는 UTF-8**로 기록) |
+| 완료 기준 | ① `npm run build` 후 `dist/`에 `server.mjs`, `import.mjs`, `public/` ② `npm run package`가 zip을 만들고 **`node_modules` 없는 임시 디렉터리에 풀어 서버 기동·`GET /api/databases` 응답까지 확인하는 스모크**를 통과 ③ `deploy`를 두 번 실행해도 `data/`의 DB와 `reports/`가 그대로 ④ `start.bat`에 `chcp 65001`, Node 버전 검사(22.13 미만이면 안내 후 종료), 마지막 `pause` ⑤ 버전 검사 스니펫이 `22.12.0`은 거부하고 `22.13.0`, `24.14.0`은 통과(스니펫만 단위 실행) ⑥ 배포된 `start.bat`, `import.bat`의 **모든 줄이 CRLF**이고 BOM이 없다(`grep -c` 등으로 확인) ⑦ `server.lock`이 있으면 `deploy`가 중단되고 `--force`를 주면 진행 |
 | 검증 | `npm run build && npm run package`, 스모크 스크립트, `deploy` 후 파일 목록 비교 |
 | 커밋 제안 | `feat: Add production build` / `feat: Add package and deploy scripts` / `feat: Add start.bat launcher` |
 
@@ -149,6 +149,10 @@
 | WSL의 `curl`로 `localhost` 접속 | **실패**(응답 없음). Windows 호스트 IP(`ip route`의 default 게이트웨이)로는 성공 |
 | Windows 프로세스 종료 | `Stop-Process -Force`/`taskkill /F`는 강제 종료라 **Node의 시그널 핸들러가 실행되지 않는다** |
 | 경로 변환 | `wslpath -w /mnt/c/WordQuiz-dev` → `C:\WordQuiz-dev` |
+| 실행 중인 스크립트 파일 | Windows에서 실행 중인 `.mjs`는 **잠기지 않아 WSL에서 덮어쓰기가 허용**된다 (실행 중 서버는 옛 코드를 메모리에 유지) |
+| 열린 SQLite DB 파일 | 삭제·이름 변경은 `Permission denied`로 **차단**, 복사는 **허용** |
+| Windows에서 WSL 서버 접속 | `curl.exe http://localhost:<port>`로 WSL 서버에 접속됨 (Windows 브라우저로 Vite dev 서버 확인 가능) |
+| Git 줄바꿈 설정 | `.gitattributes`, `core.autocrlf` 모두 없음 → M0에서 `.gitattributes` 추가 |
 | `cmd.exe` | UNC 경로(`\\wsl.localhost\...`)를 작업 디렉터리로 쓸 수 없다. `/mnt/c/...`에서 실행해야 한다 |
 
 **한계**: 이 PC의 Windows Node는 24.14이므로 **스펙의 최소 버전 22.13은 여기서 검증할 수 없다.** 사용자 PC의 Node 버전 확인은 수동 항목이다.
@@ -171,7 +175,9 @@ curl.exe -s http://localhost:35000/api/databases      # WSL curl 대신 curl.exe
 | 강제 종료 후 복구 | 세션 시작 → `Stop-Process -Force` → 재기동 후 같은 DB 시작 | 이전 세션 `ended_at`이 `last_seen_at`으로 채워짐 |
 | UTF-8 | `import.bat`(또는 `cmd.exe /c chcp 65001 ...`)의 출력을 **파일로 리다이렉트**해 바이트 확인 | 장음 기호(`ā ē ī ō ū`)·움라우트가 깨지지 않음 |
 | 배포 스크립트 | `deploy` 두 번 실행 | `data/`·`reports/` 보존 |
-| 경로·재시작 | Windows에서 만든 DB를 WSL에서 열고 그 반대도 | 양쪽에서 읽힘 (파일 호환) |
+| 파일 호환 | Windows에서 만든 DB를 WSL에서 **읽기 전용·순차**로 열고, 그 반대도 확인. **같은 DB를 동시에 열지 않는다**(`/mnt/c` 잠금 불안정, TECH-SPEC 8.5) | 양쪽에서 읽힘 |
+| 배포 잠금 | 서버 기동(`server.lock` 생성) 후 `deploy` 실행 | 중단 메시지 출력, `--force`로만 진행 |
+| 줄바꿈 | 배포된 `.bat` 검사 | 모든 줄 CRLF, BOM 없음 |
 
 ### 3.3 수동 체크리스트 (사용자, Windows)
 - [ ] `start.bat` 더블클릭 → 콘솔이 뜨고 기본 브라우저에 시작 화면이 열린다
@@ -242,6 +248,7 @@ curl.exe -s http://localhost:35000/api/databases      # WSL curl 대신 curl.exe
 | 채점 결과가 실제 데이터에서 예상과 다름 | M1, M3 | 문제 행을 픽스처로 추가하고 M3 종단 검증에서 전체 178행으로 재확인 |
 | Windows 콘솔 창 닫기 시 종료 시각이 남지 않음 | M9 수동 | `last_seen_at` 보정이 안전망(자동 검증됨). 핸들러가 안 도는 경우 스펙 3.5를 보완 |
 | 테스트가 종료되지 않은 `node.exe`를 남김 | M0 | 자동 검증 스크립트가 **자신이 띄운 프로세스만** `CommandLine`으로 찾아 종료하고, 종료 후 포트가 닫혔는지 확인 |
+| `.bat` 줄바꿈·대소문자 이름·열린 DB 삭제 불가 등 OS 차이 | M0, M8 | TECH-SPEC 8.5의 규칙을 완료 기준에 넣어 자동 검증한다(줄바꿈, 이름 판정, deploy 잠금) |
 | 샘플 xlsx가 사라짐 | 상시 | 테스트가 의존하지 않도록 원칙 5 적용. 종단 검증 전에만 존재 확인 |
 
 ---
@@ -252,7 +259,7 @@ curl.exe -s http://localhost:35000/api/databases      # WSL curl 대신 curl.exe
 
 | 항목 | 기본값 | 정할 시점 |
 |------|--------|-----------|
-| `data/` 폴더 정책 (커밋 대상 / `.gitignore` / 유지) | 지금처럼 untracked로 두고 건드리지 않음 | M0 전 |
+| `data/` 폴더 정책 | **결정됨: untracked 유지**, `.gitignore`에도 넣지 않는다 | 완료 |
 | 개발 중 Windows 검증 위치 | `C:\WordQuiz-dev` (사용자 데이터와 분리) | M0 |
 | 실제 `C:\WordQuiz` 배포 시점 | M9에서 사용자 승인 후 | M9 |
 | 사용자 PC의 Node 버전 | 22.13 이상으로 가정(사용자 확인) | M9 |
