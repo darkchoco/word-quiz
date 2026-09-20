@@ -1,0 +1,21 @@
+[
+  { "row": 2, "headword": "conicere, coniciō, coniēcī, coniectum", "cells": ["(zusammen)werfen, folgern, vermuten"], "groups": [["(zusammen)werfen", "folgern", "vermuten"]] },
+  { "row": 4, "headword": "mittere, mittō, mīsī, missum", "cells": ["(los)lassen, schicken, werfen"], "groups": [["(los)lassen", "schicken", "werfen"]] },
+  { "row": 5, "headword": "capere, capiō, cēpī, captum", "cells": ["fassen, nehmen", "erobern"], "groups": [["fassen", "nehmen"], ["erobern"]] },
+  { "row": 22, "headword": "mūtāre, mūtō", "cells": ["(ver)ändern, verwandeln"], "groups": [["(ver)ändern", "verwandeln"]] },
+  { "row": 24, "headword": "Prōmētheus, Prōmēthei", "cells": ["Prometheus (Göttersohn, Schöpfer der Menschen)"], "groups": [["Prometheus (Göttersohn, Schöpfer der Menschen)"]] },
+  { "row": 25, "headword": "vinculum", "cells": ["Band, Fessel", "Pl. Gefängnis"], "groups": [["Band", "Fessel"], ["Pl. Gefängnis"]] },
+  { "row": 30, "headword": "mortālis, e", "cells": ["sterblich", "Subst. Mensch"], "groups": [["sterblich"], ["Subst. Mensch"]] },
+  { "row": 31, "headword": "plēnus, a, um (m. Gen.)", "cells": ["voll (von / mit)"], "groups": [["voll (von / mit)"]] },
+  { "row": 33, "headword": "placet m. Dat.", "cells": ["es gefällt jdm., jd. beschließt"], "groups": [["es gefällt jdm.", "jd. beschließt"]] },
+  { "row": 68, "headword": "quot?", "cells": ["wie viel(e)?"], "groups": [["wie viel(e)?"]] },
+  { "row": 84, "headword": "fugere, fugiō, fūgī (m. Akk.)", "cells": ["fliehen (vor), meiden"], "groups": [["fliehen (vor)", "meiden"]] },
+  { "row": 87, "headword": "secundus, a, um", "cells": ["der (die, das) zweite", "günstig"], "groups": [["der (die, das) zweite"], ["günstig"]] },
+  { "row": 93, "headword": "sacerdōs, sacerdōtis m/f", "cells": ["Priester(in)"], "groups": [["Priester(in)"]] },
+  { "row": 106, "headword": "vulnus, vulneris n", "cells": ["Wunde, (milit.) Verlust"], "groups": [["Wunde", "(milit.) Verlust"]] },
+  { "row": 113, "headword": "tempus, temporis n", "cells": ["(günstige) Zeit, Umstände"], "groups": [["(günstige) Zeit", "Umstände"]] },
+  { "row": 132, "headword": "quō?", "cells": ["wohin? wo?"], "groups": [["wohin? wo?"]] },
+  { "row": 138, "headword": "littera", "cells": ["Buchstabe", "Pl. Brief", "Literatur, Wissenschaft"], "groups": [["Buchstabe"], ["Pl. Brief"], ["Literatur", "Wissenschaft"]] },
+  { "row": 162, "headword": "tēlum", "cells": ["(Angriffs-)Waffe, Geschoss"], "groups": [["(Angriffs-)Waffe", "Geschoss"]] },
+  { "row": 169, "headword": "equidem", "cells": ["(ich) allerdings, freilich"], "groups": [["(ich) allerdings", "freilich"]] }
+]
