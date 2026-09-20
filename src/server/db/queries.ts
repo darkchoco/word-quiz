@@ -169,3 +169,64 @@ export function saveProgress(db: DatabaseSync, wordId: number, progress: Progres
     throw new AppError('WORD_NOT_FOUND', 'The word does not exist.');
   }
 }
+
+/** A word as stored, without its learning progress. */
+export interface StoredWord {
+  id: number;
+  headword: string;
+  meanings: string[][];
+  note: string | null;
+}
+
+function parseStoredMeanings(json: string, headword: string): string[][] {
+  let value: unknown;
+  try {
+    value = JSON.parse(json);
+  } catch {
+    value = undefined;
+  }
+  const ok =
+    Array.isArray(value) &&
+    value.every((group) => Array.isArray(group) && group.every((item) => typeof item === 'string'));
+  if (!ok) throw new AppError('INTERNAL', `The stored meanings of "${headword}" are damaged.`);
+  return value as string[][];
+}
+
+/** Every word, oldest first. */
+export function getAllWords(db: DatabaseSync): StoredWord[] {
+  const rows = db.prepare('SELECT id, headword, meanings, note FROM word ORDER BY id').all() as {
+    id: number;
+    headword: string;
+    meanings: string;
+    note: string | null;
+  }[];
+  return rows.map((row) => ({
+    id: row.id,
+    headword: row.headword,
+    meanings: parseStoredMeanings(row.meanings, row.headword),
+    note: row.note,
+  }));
+}
+
+/**
+ * Replaces the meanings and the note of a word and touches `updated_at`. The headword and the
+ * learning progress stay as they are. An empty note is stored as NULL.
+ */
+export function updateWordContent(
+  db: DatabaseSync,
+  id: number,
+  content: { meanings: string[][]; note: string | null },
+  now: number = Date.now(),
+): void {
+  const problem = validateMeanings(content.meanings);
+  if (problem !== null) {
+    throw new AppError('INVALID_MEANINGS', `The meanings are not valid (${problem}).`);
+  }
+  const note = content.note === null || content.note.trim() === '' ? null : content.note;
+  const result = db
+    .prepare('UPDATE word SET meanings = ?, note = ?, updated_at = ? WHERE id = ?')
+    .run(JSON.stringify(content.meanings), note, now, id);
+  if (Number(result.changes) === 0) {
+    throw new AppError('WORD_NOT_FOUND', 'The word does not exist.');
+  }
+}

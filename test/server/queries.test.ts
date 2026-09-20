@@ -5,6 +5,7 @@ import {
   allWordsDone,
   countPool,
   countWords,
+  getAllWords,
   getProgress,
   getQuestionsPerRound,
   insertWord,
@@ -13,6 +14,7 @@ import {
   saveProgress,
   sessionStats,
   setQuestionsPerRound,
+  updateWordContent,
 } from '../../src/server/db/queries';
 import { startSession } from '../../src/server/db/sessions';
 import { transaction } from '../../src/server/db/transaction';
@@ -265,6 +267,71 @@ describe('progress', () => {
     const db = freshDb();
     expect(getProgress(db, 999)).toBeUndefined();
     const error = thrown(() => saveProgress(db, 999, { streak: 0, wrongMark: false, nextRound: 1, done: false }));
+    expect((error as AppError).code).toBe('WORD_NOT_FOUND');
+  });
+});
+
+describe('getAllWords', () => {
+  it('returns every word oldest first, with parsed meanings and notes', () => {
+    const db = freshDb();
+    insertWord(db, { headword: 'capere', meanings: [['fassen', 'nehmen'], ['erobern']], note: 'Verb' });
+    insertWord(db, { headword: 'taurus', meanings: [['Stier']] });
+    expect(getAllWords(db)).toEqual([
+      { id: 1, headword: 'capere', meanings: [['fassen', 'nehmen'], ['erobern']], note: 'Verb' },
+      { id: 2, headword: 'taurus', meanings: [['Stier']], note: null },
+    ]);
+  });
+
+  it('returns an empty list for an empty database', () => {
+    expect(getAllWords(freshDb())).toEqual([]);
+  });
+
+  it('reports damaged meanings instead of returning them', () => {
+    const db = freshDb();
+    addWord(db, 'broken');
+    db.exec(`UPDATE word SET meanings = '"just text"'`);
+    const error = thrown(() => getAllWords(db));
+    expect((error as AppError).code).toBe('INTERNAL');
+    expect((error as AppError).message).toContain('broken');
+  });
+});
+
+describe('updateWordContent', () => {
+  it('changes the meanings, the note and updated_at, and nothing else', () => {
+    const db = freshDb();
+    const id = insertWord(db, { headword: 'taurus', meanings: [['Stier']], note: 'old' }, 100);
+    saveProgress(db, id, { streak: 2, wrongMark: true, nextRound: 9, done: false });
+
+    updateWordContent(db, id, { meanings: [['Stier', 'Bulle']], note: 'new' }, 500);
+
+    expect(db.prepare('SELECT headword, meanings, note, created_at, updated_at FROM word WHERE id = ?').get(id)).toEqual({
+      headword: 'taurus',
+      meanings: '[["Stier","Bulle"]]',
+      note: 'new',
+      created_at: 100,
+      updated_at: 500,
+    });
+    expect(getProgress(db, id)).toEqual({ streak: 2, wrongMark: true, nextRound: 9, done: false });
+  });
+
+  it('stores an empty note as NULL', () => {
+    const db = freshDb();
+    const id = insertWord(db, { headword: 'a', meanings: [['x']], note: 'old' });
+    updateWordContent(db, id, { meanings: [['x']], note: '  ' });
+    expect(db.prepare('SELECT note FROM word WHERE id = ?').get(id)).toEqual({ note: null });
+  });
+
+  it('rejects invalid meanings and leaves the word unchanged', () => {
+    const db = freshDb();
+    const id = insertWord(db, { headword: 'a', meanings: [['x']] });
+    const error = thrown(() => updateWordContent(db, id, { meanings: [], note: null }));
+    expect((error as AppError).code).toBe('INVALID_MEANINGS');
+    expect(getAllWords(db)[0]?.meanings).toEqual([['x']]);
+  });
+
+  it('rejects an unknown word', () => {
+    const db = freshDb();
+    const error = thrown(() => updateWordContent(db, 999, { meanings: [['x']], note: null }));
     expect((error as AppError).code).toBe('WORD_NOT_FOUND');
   });
 });
