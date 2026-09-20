@@ -2,7 +2,7 @@
 
 ## 1. 날짜 / 주제
 - 저장일: 2026-09-20 (작업 진행: 2026-09-18 ~ 09-20)
-- 주제: 문서 단계 완료(PRD v1.3, TECH-SPEC v1.2, EXECUTION-PLAN v1.2). **M0(골격 + Windows 스모크) 완료** → 다음은 **M1(공용 규칙 `src/shared`)**
+- 주제: 문서 단계 완료(PRD v1.3, TECH-SPEC v1.3, EXECUTION-PLAN v1.3). **M0·M1 완료** → 다음은 **M2(DB 계층 `src/server/db`)**
 
 ## 2. 완료한 작업
 - [x] `docs/PRD.md` v1.2 확정 (결정 로그 D1~D36, 미결 사항 없음)
@@ -17,7 +17,8 @@
 - [x] WSL 개발 차이 4가지(.bat CRLF, DB 이름 대소문자, 실행 중 서버와 deploy 불일치, OS 간 DB 접근)를 TECH-SPEC 8.5·T13~T16, EXECUTION-PLAN에 반영 (커밋 여부는 `git log`로 확인)
 - [x] `data/`는 **untracked 유지로 결정** (`.gitignore`에도 넣지 않음)
 - [x] **M0 완료**: 도구 체인(TS 7.0.2, vitest 5.0.1, esbuild 0.28.2, @types/node 22.20.4, read-excel-file 9.3.10 정확 고정), `.gitattributes`(CRLF), `src/server/paths.ts`(`appHome`), 스모크 서버·CLI, `scripts/build.mjs`, `scripts/win-smoke.sh`. `npm run smoke:win` 20/20 통과 (Windows node.exe 24.14.0, `C:\WordQuiz-dev`)
-- [ ] M1~M9 미구현 (EXECUTION-PLAN 진행 현황 표 참고)
+- [x] **M1 완료**: `src/shared/{api,grading,scheduling,meanings}.ts`, 테스트 228개(api 3 / grading 173 / scheduling 17 / meanings 35), 픽스처 `test/fixtures/tricky-meanings.json`(실제 단어장 19행 발췌, 기대값은 손으로 작성). 결함 주입(mutation) 검증으로 테스트가 스파이크 결함을 실제로 잡는 것을 확인
+- [ ] M2~M9 미구현 (EXECUTION-PLAN 진행 현황 표 참고)
 
 ## 3. 결정과 이유 (상세는 PRD 8.1 D1~D36, TECH-SPEC 1장 T1~T12)
 | 결정 | 이유 |
@@ -33,6 +34,7 @@
 | 정답 변형에 **괄호 원형**을 포함 (T10) | 화면 표기 그대로 입력해도 정답이어야 함 (스파이크에서 발견) |
 | merge 전 `--apply` 시 DB 자동 백업 `data/backup/` (T12) | 앱에서 고친 뜻을 재 import가 덮어쓸 수 있음. 사용자 승인 |
 | 상태 바 정답 수는 Perfect만 집계, 목업 제안 3개 유지 (D34) | "그 외에는 모두 오케이" |
+| `splitTop`은 **짝이 맞는 괄호만** 보호하고 짝 없는 괄호는 일반 문자. `grade([])`는 RangeError. `validateMeanings`는 `parse(format(g))` 왕복 불변을 핵심 기준으로 검증 (M1) | 짝 없는 `(`가 뒤의 쉼표를 삼키는 것을 막고, 저장한 뜻이 편집 화면에서 그대로 보이게 하기 위해 |
 | 서버 `0.0.0.0` 바인딩 + Content-Type/Host 검사, `--local-only` 옵션 (T·9장) | 모바일 접속 요구 + 무인증 LAN 위험 완화 |
 | 커밋은 주제별 분리, 메시지를 먼저 보여주고 확인 | 사용자 요청 + 프로젝트 규칙 |
 | 이번 범위는 PC 서버 + 같은 네트워크 휴대폰 접속. 휴대폰 단독 실행은 나중에 필요하면 (D37). **향후 홈 네트워크 별도 서버로 이전 계획** | 사용자 결정. 그래서 허용 Host를 설정으로 추가 가능하게 함(T15, `nas.local` 등), 인증은 그때 검토 (TECH-SPEC 15장) |
@@ -56,8 +58,9 @@
 - **`data/latin_wortschatz.xlsx`가 한 번 사라졌었음**(원인 불명, 사용자가 다시 복사). 구현·테스트가 이 파일에 의존하면 안 됨. 테스트 픽스처는 저장소 안에 별도로 둘 것 (TECH-SPEC 10장)
 
 ## 5. 다음 세션 시작 시 할 일
-1. `git log --oneline`과 `git status`로 M0 커밋 여부를 확인한다. 미커밋이면 사용자에게 커밋 메시지를 먼저 보여주고 진행한다
-2. **M1(공용 규칙 `src/shared`)** 을 plan mode로 시작한다: `grading.ts`, `scheduling.ts`, `meanings.ts`, `api.ts`, 테스트, `test/fixtures/tricky-meanings.json`. 완료 기준은 EXECUTION-PLAN M1 참고. 채점 알고리즘의 기준 구현은 TECH-SPEC 4.1과 스파이크 결과(14.1)이며 **원형·괄호제거·괄호문자만제거 3변형, `? ! .` 무시, 괄호 밖 쉼표만 분리**가 핵심. 마일스톤 절차는 plan mode → 구현 → `npm run typecheck` → 단일 테스트 → 커밋 메시지 사전 확인 → 커밋. **구현 시작 시 UI는 이미 컨펌됨**(목업 기준), 단 구현 중 화면 변경이 생기면 다시 컨펌
+1. `git log --oneline`과 `git status`로 M1 커밋 여부를 확인한다. 미커밋이면 사용자에게 커밋 메시지를 먼저 보여주고 진행한다
+2. **사용자에게 확인할 것**: 실제 단어장의 `quō?` 행 뜻이 `wohin? wo?`(쉼표 없음)라 동의어 하나로 처리된다. 두 단어를 각각 동의어로 의도했다면 Excel을 `wohin?, wo?`로 고쳐야 한다 (TECH-SPEC 4.1, 아직 답 못 받음)
+3. **M2(DB 계층)** 를 plan mode로 시작한다: `src/server/db/{migrations,open,queries,names}.ts`와 테스트. 스키마는 TECH-SPEC 3.3 DDL, 완료 기준은 EXECUTION-PLAN M2 참고. M1의 `Progress`는 boolean 필드이므로 DB 0/1 변환은 M2 저장 계층이 맡는다. `pool` 조회는 `next_round <= n` 경계와 `done`, 재시험(`wrong_mark`) 조건을 테스트할 것. 마일스톤 절차는 plan mode → 구현 → `npm run typecheck` → 단일 테스트 → 커밋 메시지 사전 확인 → 커밋. 테스트는 결함 주입으로 실제로 실패하는지도 확인하면 좋다
 3. **Windows 자동 검증 시 주의**: WSL의 `curl`은 Windows `localhost`에 닿지 않으므로 `curl.exe`를 쓴다. `Stop-Process -Force`는 시그널 핸들러를 실행하지 않아 `SIGTERM` 정상 종료는 자동 검증 불가(대신 강제 종료 후 재기동 시 `last_seen_at` 보정을 검증). 테스트로 띄운 `node.exe`는 `CommandLine`으로 **자기가 띄운 것만** 종료할 것. `cmd.exe`는 UNC 경로에서 실행 불가라 `/mnt/c/...`에서 실행. 이 PC는 Node 24.14라 최소 버전 22.13은 검증 불가
 4. 알아둘 것: xlsx 라이브러리 `read-excel-file`은 9.3.10으로 스파이크했음. 버전 고정할 것. 스파이크 코드는 스크래치패드에만 있어 사라졌음(TECH-SPEC 14장에 결과만 있음)
 
@@ -77,6 +80,6 @@
 - `prompts/PRD-instruction.md`, `prompts/req_prd.md` — 원본 요구사항 지침
 - `.claude/session-state.md` — 이 파일 / `.claude/commands/handoff.md` — 이 저장 명령
 - 메모리: `/home/ikhoon/.claude/projects/-home-ikhoon-lab-word-quiz/memory/` (`feedback_docs_in_korean`, `project_word_quiz_workflow`)
-- 코드: `package.json`, `tsconfig.*.json`, `vitest.config.ts`, `src/server/paths.ts`, `src/server/index.ts`(스모크용), `src/cli/index.ts`(스모크용), `test/smoke.test.ts`, `scripts/build.mjs`, `scripts/win-smoke.sh`
+- 코드: `src/shared/`(api, grading, scheduling, meanings), `test/shared/`, `test/fixtures/tricky-meanings.json`, `package.json`, `tsconfig.*.json`, `vitest.config.ts`, `src/server/paths.ts`, `src/server/index.ts`(스모크용), `src/cli/index.ts`(스모크용), `test/smoke.test.ts`, `scripts/build.mjs`, `scripts/win-smoke.sh`
 - 검증 명령: `npm run typecheck` / `npm test -- <이름>` / `npm run build` / `npm run smoke:win`
 - (참고) Artifact 링크 https://claude.ai/artifact/Gqn1G2DA4wXmBB4dsMrf6E — 옛 한국어 UI 버전, 사용자가 열지 못함. 기준 아님
