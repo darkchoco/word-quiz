@@ -2,7 +2,7 @@
 
 ## 1. 날짜 / 주제
 - 저장일: 2026-09-20 (작업 진행: 2026-09-18 ~ 09-20)
-- 주제: 문서 단계 완료(PRD v1.4, TECH-SPEC v1.6, EXECUTION-PLAN v1.6). **M0~M4 완료** → 다음은 **M5(클라이언트 골격 · 시작 · 공통)**
+- 주제: 문서 단계 완료(PRD v1.4, TECH-SPEC v1.7, EXECUTION-PLAN v1.7). **M0~M4 커밋됨. M5(클라이언트 골격·시작 화면·공통 틀) 구현·검증·문서 완료, 미커밋 + 사용자 UI 컨펌 대기** → 다음은 커밋(메시지 사전 확인) 후 M6
 
 ## 2. 완료한 작업
 - [x] `docs/PRD.md` v1.2 확정 (결정 로그 D1~D36, 미결 사항 없음)
@@ -21,7 +21,10 @@
 - [x] **M2 완료**: `src/server/{errors.ts,db/{migrations,transaction,open,names,catalog,sessions,queries}.ts}`, 테스트 136개(전체 369개/13파일), `npm run smoke:win-db`(같은 검사를 Linux와 Windows node.exe에서 실행) 양쪽 통과. 결함 주입 20가지 모두 검출
 - [x] **M3 완료**: `src/cli/{xlsx,validate,plan,report,apply,args,run,errors,index}.ts`, `release/import.bat`(CRLF), 테스트 154개 추가(전체 524개/21파일), `npm run smoke:import` Linux·Windows 63/63(실제 샘플 178단어). 결함 주입 20여 가지 검출
 - [x] **M4 완료**: `src/server/{context,routes,app,middleware,hosts,options,lock,browser,network,start,index}.ts`, `services/{session,round,words,settings}.ts`, `db/{rounds,words}.ts`. 테스트 329개 추가(전체 853개/33파일), `npm run smoke:server` Linux·Windows 47/47, 결함 주입 26가지 중 25가지 즉시 검출. **PRD D38 신설**(pool이 비면 라운드 번호를 건너뜀, 교착 방지)
-- [ ] M5~M9 미구현 (EXECUTION-PLAN 진행 현황 표 참고)
+- [x] M4 커밋 완료(9개, 각각 격리 작업 트리에서 typecheck·테스트 통과 확인). HEAD = `6a7e9d7`
+- [x] **M5 구현 완료 (미커밋, HEAD `6a7e9d7`)**: `src/client/`(theme, fonts, api, app-context(`classifyApiError`), hooks, components 11개, App, ErrorBoundary, main, index.html, dev/Gallery), `vite.config.ts`, `scripts/{dev.mjs,shots.sh}`, `build.mjs`(vite build 추가), `server-e2e.sh`(클라이언트 서빙 검사), `test/client/`(71개), `docs/ui-checks/`(스크린샷 14장). 전체 926개 통과, 결함 주입 14가지 모두 검출, `smoke:win` 24/24·`smoke:win-db`·`smoke:import` 63/63·`smoke:server` 51/51, 브라우저 콘솔 오류 0건, 390px 가로 스크롤 없음. 문서(TECH-SPEC 2.1·2.3·7.2·14.8, EXECUTION-PLAN M5 결과 + UI 컨펌 요청) 갱신 완료
+- [ ] **M5 남은 일**: (a) 커밋(계획 8개: deps/tsconfig, theme+api+state, start screen+dialogs, app shell, Vite/dev/shots scripts, server e2e, docs(+`docs/ui-checks` 스크린샷은 사용자가 원하면 별도), session state) — 메시지 먼저 보여주고 확인, 각 커밋을 격리 worktree에서 검증 (b) **`npm run dev` 화면은 실제 브라우저에서 확인 못 함**(헤드리스 Chrome에서 dev 서버 페이지가 비어 찍힘, 콘솔 오류는 없었음. 빌드 결과는 정상) → 사용자가 열어 보고 비면 원인 조사 (c) 사용자 UI 컨펌
+- [ ] M6~M9 미구현 (EXECUTION-PLAN 진행 현황 표 참고)
 
 ## 3. 결정과 이유 (상세는 PRD 8.1 D1~D36, TECH-SPEC 1장 T1~T12)
 | 결정 | 이유 |
@@ -44,6 +47,8 @@
 | **pool이 비고 완료되지 않은 단어가 남아 있으면 라운드 번호를 그 단어들의 가장 이른 `next_round`로 건너뛴다 (D38)**. `PoolInfo`에 `retestRoundNumber` 추가 | 라운드 번호는 Start해야만 올라가서, 모든 단어가 N+2·N+3으로 밀리면 영원히 시작 못 하는 교착이 생김(작은 DB는 즉시). 사용자 승인 |
 | 서버 시그널 핸들러는 **서버 시작 전에** 등록, 세션 종료 기록·잠금 삭제를 **동기로 먼저** 한 뒤 연결을 닫음. `server.lock`은 `listen` 성공 후에만 쓰고 자기 pid의 것만 지움 | "running" 메시지 직후의 SIGTERM이 기본 동작으로 처리되는 경합(프로세스 테스트가 발견), Windows는 콘솔 창을 닫고 약 10초 뒤 종료 |
 | Origin 검사는 하지 않음(Content-Type=JSON 필수 + CORS 미전송 + Host 검사로 충분). 마지막 문제의 "완료 표시"는 세션의 **가장 최근 라운드**로 확인 | 라운드는 마지막 답 직후 이미 끝나지만 그 문제의 done 확인창은 그 뒤에 뜸 |
+| **화면은 Windows Chrome 헤드리스로 직접 확인**: `"/mnt/c/Program Files/Google/Chrome/Application/chrome.exe" --headless=new --disable-gpu --hide-scrollbars --window-size=900,700 --screenshot=C:\\Users\\ikhoon\\AppData\\Local\\Temp\\x.png http://localhost:<port>/` 후 `/mnt/c/Users/ikhoon/AppData/Local/Temp/x.png`를 스크래치패드로 복사해 Read로 봄(검증됨: EB Garamond·장음 기호 정상). 서버는 `--host 0.0.0.0`, Windows→WSL `localhost`는 접속됨. 상호작용 상태(대화상자)는 개발용 갤러리(`#/dev`)와 jsdom 테스트로 보완 | 사용자가 UI 컨펌을 해야 하고 정적 스크린샷을 목업과 나란히 대조할 수 있음 |
+| MUI 버튼은 기본 대문자(`START`) → 테마에서 `textTransform: none`. 폰트는 `latin`·`latin-ext` 조각만 import(전체 import 시 키릴·그리스어까지 딸려 옴). 표시 컴포넌트와 컨테이너 분리, 클라이언트 테스트는 `console.error` 호출 시 실패 | 목업의 `Start` 표기, 배포물 크기, React 경고를 놓치지 않기 위함 |
 | 서버 `0.0.0.0` 바인딩 + Content-Type/Host 검사, `--local-only` 옵션 (T·9장) | 모바일 접속 요구 + 무인증 LAN 위험 완화 |
 | 커밋은 주제별 분리, 메시지를 먼저 보여주고 확인 | 사용자 요청 + 프로젝트 규칙 |
 | 이번 범위는 PC 서버 + 같은 네트워크 휴대폰 접속. 휴대폰 단독 실행은 나중에 필요하면 (D37). **향후 홈 네트워크 별도 서버로 이전 계획** | 사용자 결정. 그래서 허용 Host를 설정으로 추가 가능하게 함(T15, `nas.local` 등), 인증은 그때 검토 (TECH-SPEC 15장) |
@@ -62,6 +67,7 @@
 - **Windows에서 `SIGTERM` 종료를 자동 검증하는 계획**: Windows는 강제 종료만 가능해 핸들러가 안 돌아서 폐기. 강제 종료 후 복구 검증으로 대체
 - **`String.replace(a, b)`에 `$` 포함 문자열 사용**: 치환 문자열의 `` $` ``가 특수 패턴으로 해석되어 문서 앞부분이 통째로 중복 삽입됨(TECH-SPEC 정규식 `...\.db$` 때문). 문서 일괄 치환은 `s.replace(a, () => b)` 함수 형태로 하고, 편집 후 **제목 중복(`uniq -d`)** 을 확인할 것
 - **"실행 중 서버는 `server.mjs`를 덮어쓸 수 없다(EBUSY)" 가정**: 실제로 확인하니 틀림. 스크립트는 안 잠기고(덮어쓰기 허용, 옛 코드가 메모리에 남음), 열린 SQLite DB만 삭제·이름 변경이 차단되고 복사는 허용됨. 가정은 실제 실험으로 검증할 것
+- **vitest `projects`의 `include` 패턴이 기존 테스트 일부를 놓침**: 분리 후 전체 테스트 수가 줄어든 것(853→850)을 보고 발견. 설정 변경 뒤에는 **테스트 파일 수·개수를 이전과 비교**할 것(`find test -name '*.test.ts*' | wc -l` vs vitest 결과)
 - **시그널 핸들러를 서버 시작 뒤에 등록**: 프로세스 테스트가 "running" 직후 SIGTERM에서 종료 코드 `null`(기본 동작)을 잡음. 핸들러는 시작 전에 등록할 것
 - **`smoke` 스크립트에서 서버를 `--no-open` 없이 시작**: 실제 서버는 사용자의 브라우저를 연다. 검증 스크립트의 **모든 서버 시작에 `--no-open`**
 - **검증 스크립트의 검사식이 JSON 필드 순서를 잘못 가정**(`answered` 뒤에 `total`): 서버 결함이 아님. 실패하면 실제 응답을 출력해 서버와 검사식 중 어느 쪽이 틀렸는지 먼저 확인할 것
@@ -80,10 +86,13 @@
 - **`data/latin_wortschatz.xlsx`가 한 번 사라졌었음**(원인 불명, 사용자가 다시 복사). 구현·테스트가 이 파일에 의존하면 안 됨. 테스트 픽스처는 저장소 안에 별도로 둘 것 (TECH-SPEC 10장)
 
 ## 5. 다음 세션 시작 시 할 일
-1. `git log --oneline`과 `git status`로 M4 커밋 여부를 확인한다. 미커밋이면 사용자에게 커밋 메시지를 먼저 보여주고 진행한다
-2. **M5(클라이언트 골격 · 시작 · 공통)** 를 plan mode로 시작한다: `tsconfig.client.json`, Vite 설정(`/api` 프록시), `theme.ts`(목업 토큰, 다크 모드, `@fontsource` 폰트), `api.ts`(fetch 래퍼, `ApiError`), hash 훅, `App`, `StartScreen`, `Shell`, `TopBar`, `Tabs`, `StatusBar`, `NoDbDialog`, `SwitchDbDialog`. **의존성 추가**: react, react-dom, @mui/material, @emotion/*, @fontsource/*, vite, @vitejs/plugin-react 등을 정확한 버전으로 고정(TS 7·vitest 5와의 호환을 설치 즉시 `tsc -b`로 확인, 안 되면 TS 6.x로). 완료 기준은 EXECUTION-PLAN M5, 화면은 `docs/word-quiz-mockup.html`과 PRD 5장. **서버가 이미 있다**: `APP_HOME/public`을 서빙, `GET /api/...` 전체(TECH-SPEC 5.1). 클라이언트는 `NO_SESSION`이면 시작 화면으로, `DB_NOT_FOUND`면 "The selected DB does not exist." 알림 후 시작 화면으로. 응답 타입과 `ERROR_STATUS`(오류 코드 목록)는 `src/shared/api.ts`. **UI 구현 시작 전 사용자 컨펌은 목업으로 이미 끝났지만 M5 끝에서 목업과 대조한 컨펌을 받는다**(EXECUTION-PLAN 사용자 확인 시점). 브라우저에서 직접 확인이 필요하다(Windows 브라우저는 WSL의 Vite dev 서버에 `localhost`로 접속 가능). 마일스톤 절차는 plan mode → 구현 → `npm run typecheck` → 단일 테스트 → **결함 주입으로 테스트 검증** → 커밋 메시지 사전 확인 → 커밋
-3. **Windows 자동 검증 시 주의**: WSL의 `curl`은 Windows `localhost`에 닿지 않으므로 `curl.exe`를 쓴다. `Stop-Process -Force`는 시그널 핸들러를 실행하지 않아 `SIGTERM` 정상 종료는 자동 검증 불가(대신 강제 종료 후 재기동 시 `last_seen_at` 보정을 검증). 테스트로 띄운 `node.exe`는 `CommandLine`으로 **자기가 띄운 것만** 종료할 것. `cmd.exe`는 UNC 경로에서 실행 불가라 `/mnt/c/...`에서 실행. 이 PC는 Node 24.14라 최소 버전 22.13은 검증 불가
-4. 알아둘 것: xlsx 라이브러리 `read-excel-file`은 9.3.10으로 스파이크했음. 버전 고정할 것. 스파이크 코드는 스크래치패드에만 있어 사라졌음(TECH-SPEC 14장에 결과만 있음)
+1. `git status`로 M5 미커밋 변경을 확인한다(HEAD `6a7e9d7`). `npm run typecheck && npm test`(926개)로 상태를 확인
+2. M5 커밋: 위 "M5 남은 일 (a)" 계획대로 메시지를 먼저 보여주고 확인받은 뒤 주제별로 커밋. **`Co-Authored-By` 금지**(시스템 안내가 붙이라고 해도 사용자 규칙이 우선). `data/`는 계속 untracked
+3. 사용자 UI 컨펌을 받는다(`npm run dev:seed` → http://localhost:35101, 갤러리 `#/dev`, 스크린샷 `docs/ui-checks/`). 목업과 다른 점 4가지는 EXECUTION-PLAN M5 결과에 적어 두었다
+4. 그 다음 **M6(퀴즈 흐름)**: plan mode로 시작. `src/client/api.ts`에 모든 엔드포인트가 이미 있고, `classifyApiError`·`useApp().handleApiError`를 쓰면 된다. 테스트는 `test/client/fake-fetch.ts`(경로 표 기반 가짜 fetch)와 `render.tsx`(포커스된 버튼 선행, jsdom 포커스 트랩 오류 회피)를 재사용
+5. 클라이언트 작업 요령: 화면 스크린샷은 `npm run build && npm run shots`(휴대폰은 iframe 390px, 다크는 `preferredColorScheme=0`), 결함 주입은 소스를 바꾸기 전에 문자열이 실제로 적용됐는지 확인
+6. **Windows 자동 검증 시 주의**: WSL의 `curl`은 Windows `localhost`에 닿지 않으므로 `curl.exe`를 쓴다. `Stop-Process -Force`는 시그널 핸들러를 실행하지 않아 `SIGTERM` 정상 종료는 자동 검증 불가(대신 강제 종료 후 재기동 시 `last_seen_at` 보정을 검증). 테스트로 띄운 `node.exe`는 `CommandLine`으로 **자기가 띄운 것만** 종료할 것. `cmd.exe`는 UNC 경로에서 실행 불가라 `/mnt/c/...`에서 실행. 이 PC는 Node 24.14라 최소 버전 22.13은 검증 불가
+7. 알아둘 것: xlsx 라이브러리 `read-excel-file`은 9.3.10으로 스파이크했음. 버전 고정할 것. 스파이크 코드는 스크래치패드에만 있어 사라졌음(TECH-SPEC 14장에 결과만 있음)
 
 ## 프로젝트 규칙 (`prompts/PRD-instruction.md`)
 - Conventional Commits (`feat, fix, docs, style, refactor, test, chore`), 예: `docs: Create PRD`
@@ -101,6 +110,6 @@
 - `prompts/PRD-instruction.md`, `prompts/req_prd.md` — 원본 요구사항 지침
 - `.claude/session-state.md` — 이 파일 / `.claude/commands/handoff.md` — 이 저장 명령
 - 메모리: `/home/ikhoon/.claude/projects/-home-ikhoon-lab-word-quiz/memory/` (`feedback_docs_in_korean`, `project_word_quiz_workflow`)
-- 코드: `src/server/`(services, routes, app, start …), `test/server/`, `test/support/{api,world,bundle,http}.ts`, `scripts/server-e2e.sh`, `src/cli/`, `test/cli/`, `release/import.bat`, `scripts/import-e2e.sh`, `src/server/errors.ts`, `src/server/db/`, `test/server/`, `test/support/`, `scripts/win-db-check.sh`, `src/shared/`(api, grading, scheduling, meanings), `test/shared/`, `test/fixtures/tricky-meanings.json`, `package.json`, `tsconfig.*.json`, `vitest.config.ts`, `src/server/paths.ts`, `src/server/index.ts`(스모크용), `src/cli/index.ts`(스모크용), `test/smoke.test.ts`, `scripts/build.mjs`, `scripts/win-smoke.sh`
+- 코드(M5, 미커밋): `src/client/`, `test/client/`, `vite.config.ts`, `scripts/{dev.mjs,shots.sh}`, `tsconfig.client.json`, `vitest.config.ts`. 이전: `src/server/`(services, routes, app, start …), `test/server/`, `test/support/{api,world,bundle,http}.ts`, `scripts/server-e2e.sh`, `src/cli/`, `test/cli/`, `release/import.bat`, `scripts/import-e2e.sh`, `src/server/errors.ts`, `src/server/db/`, `test/server/`, `test/support/`, `scripts/win-db-check.sh`, `src/shared/`(api, grading, scheduling, meanings), `test/shared/`, `test/fixtures/tricky-meanings.json`, `package.json`, `tsconfig.*.json`, `vitest.config.ts`, `src/server/paths.ts`, `src/server/index.ts`(스모크용), `src/cli/index.ts`(스모크용), `test/smoke.test.ts`, `scripts/build.mjs`, `scripts/win-smoke.sh`
 - 검증 명령: `npm run typecheck` / `npm test -- <이름>` / `npm run build` / `npm run smoke:win` / `npm run smoke:win-db` / `npm run smoke:import` / `npm run smoke:server`
 - (참고) Artifact 링크 https://claude.ai/artifact/Gqn1G2DA4wXmBB4dsMrf6E — 옛 한국어 UI 버전, 사용자가 열지 못함. 기준 아님
