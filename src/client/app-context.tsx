@@ -1,5 +1,5 @@
 import { createContext, useContext } from 'react';
-import type { SessionState } from '../shared/api';
+import type { SessionState, Stats } from '../shared/api';
 import { ApiError } from './api';
 
 export interface AppContextValue {
@@ -10,6 +10,15 @@ export interface AppContextValue {
    * start screen; everything else is shown as a message. The caller does not need to do anything after.
    */
   handleApiError: (error: unknown) => void;
+  /** The status bar numbers, which every answer changes. */
+  updateStats: (stats: Stats) => void;
+  /**
+   * The Wrong tab (M7) asks for a retest and the quiz tab shows the retest banner and starts
+   * a retest round. The request is used up by the next round start.
+   */
+  retestRequested: boolean;
+  requestRetest: () => void;
+  clearRetest: () => void;
   /** Ends the session on the server and goes back to the start screen. */
   switchDb: () => Promise<void>;
 }

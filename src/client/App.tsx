@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Alert, Snackbar } from '@mui/material';
-import type { SessionState } from '../shared/api';
+import type { SessionState, Stats } from '../shared/api';
 import { api, ApiError } from './api';
 import { AppContext, classifyApiError } from './app-context';
 import { ServerUnreachable } from './components/ServerUnreachable';
@@ -13,6 +13,7 @@ export function App() {
   const [boot, setBoot] = useState<Boot>({ kind: 'loading' });
   const [noDbNotice, setNoDbNotice] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [retestRequested, setRetestRequested] = useState(false);
 
   const load = useCallback(async () => {
     setBoot({ kind: 'loading' });
@@ -51,11 +52,18 @@ export function App() {
     setBoot({ kind: 'start' });
   }, [handleApiError]);
 
+  const updateStats = useCallback(
+    (stats: Stats) => setBoot((b) => (b.kind === 'session' ? { kind: 'session', session: { ...b.session, stats } } : b)),
+    [],
+  );
+  const requestRetest = useCallback(() => setRetestRequested(true), []);
+  const clearRetest = useCallback(() => setRetestRequested(false), []);
+
   const setSession = useCallback((session: SessionState) => setBoot({ kind: 'session', session }), []);
 
   const context = useMemo(
-    () => (boot.kind === 'session' ? { session: boot.session, setSession, handleApiError, switchDb } : null),
-    [boot, setSession, handleApiError, switchDb],
+    () => (boot.kind === 'session' ? { session: boot.session, setSession, handleApiError, switchDb, updateStats, retestRequested, requestRetest, clearRetest } : null),
+    [boot, setSession, handleApiError, switchDb, updateStats, retestRequested, requestRetest, clearRetest],
   );
 
   let body;
