@@ -11,7 +11,8 @@
     "typecheck": "tsc -b",
     "test": "vitest run",
     "build": "node scripts/build.mjs",
-    "smoke:win": "bash scripts/win-smoke.sh"
+    "smoke:win": "bash scripts/win-smoke.sh",
+    "smoke:win-db": "bash scripts/win-db-check.sh"
   },
   "devDependencies": {
     "@types/node": "22.20.4",
