@@ -1,7 +1,7 @@
 # Word Quiz 실행 계획
 
-> 상태: v1.4 (진행 중 · M0~M2 완료) · 작성일: 2026-09-20  
-> 기준 문서: `docs/PRD.md` v1.3, `docs/TECH-SPEC.md` v1.4, `docs/word-quiz-mockup.html`  
+> 상태: v1.5 (진행 중 · M0~M3 완료) · 작성일: 2026-09-20  
+> 기준 문서: `docs/PRD.md` v1.3, `docs/TECH-SPEC.md` v1.5, `docs/word-quiz-mockup.html`  
 > 범위: **무엇을 어떤 순서로 만들고 어떻게 확인하는가**. 요구사항은 PRD, 설계는 기술 스펙이 다룬다.
 
 ---
@@ -24,7 +24,7 @@
 | M0 | 프로젝트 골격 + Windows 스모크 | S | [x] 2026-09-20 |
 | M1 | 공용 규칙 (`src/shared`) | M | [x] 2026-09-20 |
 | M2 | DB 계층 | M | [x] 2026-09-20 |
-| M3 | Import CLI | L | [ ] |
+| M3 | Import CLI | L | [x] 2026-09-20 |
 | M4 | 서버 서비스와 API | L | [ ] |
 | M5 | 클라이언트 골격 · 시작 · 공통 | M | [ ] |
 | M6 | 클라이언트 퀴즈 흐름 | L | [ ] |
@@ -64,7 +64,7 @@
 **M0 결과 (2026-09-20)**: 완료 기준 ①~⑤ 전부 충족. 스모크 20/20 통과.
 - 판별 결과: `read-excel-file` 번들 성공(대체안 불필요), `WSLENV=WORDQUIZ_HOME/p`로 Windows 프로세스에 환경변수 전달 가능, vitest `ExperimentalWarning`은 `execArgv`로 억제됨.
 - 고정 버전과 tsconfig 결정(`Bundler` 해석, `@types/node` 22.x)은 TECH-SPEC 2.1에 기록했고, 스모크 상세는 TECH-SPEC 14.4에 있다.
-- `npm run typecheck` / `npm test -- <이름>` / `npm run build` / `npm run smoke:win`(서버·CLI 번들의 Windows 스모크) / `npm run smoke:win-db`(DB 계층의 Linux·Windows 동작 확인, M2)가 이후 마일스톤의 기본 검증 명령이다.
+- `npm run typecheck` / `npm test -- <이름>` / `npm run build` / `npm run smoke:win`(서버·CLI 번들의 Windows 스모크) / `npm run smoke:win-db`(DB 계층의 Linux·Windows 동작 확인, M2) / `npm run smoke:import`(실제 샘플로 하는 import CLI 종단 검증, Linux·Windows, M3)가 이후 마일스톤의 기본 검증 명령이다.
 - 최소 버전 Node 22.13은 이 PC(24.14)에서 검증할 수 없어 M9 수동 체크리스트에 남는다.
 
 ### M1. 공용 규칙 `src/shared` (M)
@@ -106,6 +106,16 @@
 | **종단 검증** | 임시 `WORDQUIZ_HOME`에서 실제 샘플로: 검증 모드(DB 없음, 178 추가 예정) → `--new-db latin --lang latin --apply`(178단어 적재) → 같은 파일로 검증 재실행(**178 전부 "변경 없음"**) → 한 셀을 바꾼 사본으로 재실행(1건 "갱신", 이전 → 이후 표시) |
 | 검증 | `npm test -- cli`, 위 종단 절차, 리포트 육안 확인(사용자 확인 시점) |
 | 커밋 제안 | `feat: Add xlsx reader and validation` / `feat: Add import plan and report` / `feat: Add import apply with backup` / `feat: Add import.bat launcher` |
+
+**M3 결과 (2026-09-20)**: 완료 기준 ①~⑧과 추가 항목을 충족. 자동 테스트 154개 추가(`src/cli` 135 + M1·M2 보강 19), **전체 524개(21개 파일) 통과**, `smoke:import` **Linux·Windows 63/63**, `smoke:win` 22/22와 `smoke:win-db` 유지.
+- **실제 샘플 종단 검증**: 검증 모드(DB 미생성, 178건 추가 예정) → `--apply`(178단어 적재) → 같은 파일로 재검증(**178건 전부 변경 없음**) → 셀 하나를 바꾼 사본(**1건 갱신, 이전 → 이후 표시**, 반영 시 백업 생성) → 대소문자만 다른 이름 거부. Windows `node.exe`에서 UTF-8 리포트(장음 기호), `VACUUM INTO` 백업까지 확인.
+- **결함 주입 20여 가지를 잡았고, 처음에 놓친 2가지를 보강했다**: "사라진 단어 삭제" 주입이 안 잡혔는데 테스트가 `word` 테이블만 보고 있었다(진행 상태 행이 지워져도 통과). 그 단어는 pool 조회에서 조용히 빠지는 손상이라 진행 상태와 내용까지 확인하도록 보강했다. 다른 하나는 주입한 SQL이 `prepare`에서 두 번째 문장이 무시되어 결함 자체가 주입되지 않은 경우였다.
+- **검증 중 발견해 고친 결함**: ① 이름 충돌 안내가 사용자가 친 이름을 제안(대소문자 환경에서 틀림) ② 출력을 `| head`로 닫으면 `EPIPE`로 크래시 ③ 여러 파일 merge 시 "Excel에서 사라짐" 수백 줄(실제 리포트를 읽다가 발견, 30개로 제한).
+- **계획 대비 변경**: `write-excel-file`은 쓰지 않았다(설치된 `fflate`로 테스트 xlsx를 만들고 `devDependencies`에 0.8.3으로 고정). 백업은 **파일 복사 대신 `VACUUM INTO`**(서버가 쓰는 도중에도 일관된 스냅샷, 기존 파일을 덮어쓰지 않음). 스펙의 "앞뒤 공백 제거" 경고는 파서가 이미 제거하므로 삭제. `|` 검사는 뜻 셀에만. `splitTop`에 `splitTopRaw`·`hasUnmatchedParens`를 노출(동작 불변).
+- **M0 스모크 갱신**: `scripts/win-smoke.sh`가 예전 임시 CLI의 출력을 검사하고 있어 실제 CLI(검사 모드)를 검사하도록 바꿨다. 그 과정에서 스크립트가 서버 스모크의 `smoke.db`와 같은 이름을 `--new-db`로 써서 CLI가 정확히 의도대로 충돌을 거부한 것을 확인했다(스크립트의 이름을 바꿈).
+- **관찰**: `smoke:win`의 "포트 사용 중" 검사가 한 번 실패했다가 두 번 연속 재실행에서 통과했다. 원인 미확정(일시적 현상으로 기록).
+- **사용자 확인 시점 충족**: 실제 샘플로 만든 리포트를 위 시나리오로 생성해 읽어 보았다(섹션 순서, 이전 → 이후 표시, `Missing in Excel` 처리). 사용자 리뷰는 아직.
+- **M4에서 쓸 것**: `getAllWords`, `updateWordContent`(뜻·노트 갱신). 아직 없는 것은 **표제어까지 고치는 `updateWord`**(M4 words API의 `PATCH`용).
 
 ### M4. 서버 서비스와 API (L)
 | 구분 | 내용 |
@@ -195,6 +205,7 @@ curl.exe -s http://localhost:35000/api/databases      # WSL curl 대신 curl.exe
 | 강제 종료 후 복구 | 세션 시작 → `Stop-Process -Force` → 재기동 후 같은 DB 시작 | 이전 세션 `ended_at`이 `last_seen_at`으로 채워짐 |
 | UTF-8 | `import.bat`(또는 `cmd.exe /c chcp 65001 ...`)의 출력을 **파일로 리다이렉트**해 바이트 확인 | 장음 기호(`ā ē ī ō ū`)·움라우트가 깨지지 않음 |
 | 배포 스크립트 | `deploy` 두 번 실행 | `data/`·`reports/` 보존 |
+| import CLI 종단 | `npm run smoke:import`: 실제 샘플로 검증 → 적재 → 재검증(전부 변경 없음) → 한 셀 변경 → 갱신·백업(`VACUUM INTO`) → 대소문자 이름 충돌 거부, UTF-8 리포트(TECH-SPEC 14.6) | Linux·Windows 모두 통과 |
 | DB 계층 동작 | `npm run smoke:win-db`: 같은 검사를 Linux와 `node.exe`에서 실행(대소문자 이름 충돌 거부, 열린 DB 삭제·이름 변경 차단, 부속 파일 없음 등, TECH-SPEC 14.5) | 양쪽 모두 통과 |
 | 파일 호환 | Windows에서 만든 DB를 WSL에서 **읽기 전용·순차**로 열고, 그 반대도 확인. **같은 DB를 동시에 열지 않는다**(`/mnt/c` 잠금 불안정, TECH-SPEC 8.5) | 양쪽에서 읽힘 |
 | 배포 잠금 | 서버 기동(`server.lock` 생성) 후 `deploy` 실행 | 중단 메시지 출력, `--force`로만 진행 |

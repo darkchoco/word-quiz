@@ -1,6 +1,6 @@
 # Word Quiz 기술 스펙
 
-> 상태: v1.4 (확정) · 작성일: 2026-09-20 · 최종 수정: 2026-09-20  
+> 상태: v1.5 (확정) · 작성일: 2026-09-20 · 최종 수정: 2026-09-20  
 > 기준 문서: `docs/PRD.md` v1.3, `docs/word-quiz-mockup.html`(영어 UI, 컨펌 완료)  
 > 범위: **어떻게 만드는가**. 제품 요구사항은 PRD가, 작업 순서는 별도 실행 계획 문서가 다룬다.
 
@@ -21,7 +21,7 @@
 | T9 | 클라이언트는 DB **이름**만 보내고 서버가 목록과 대조해 검증 | 경로 조작(path traversal) 원천 차단 |
 | T10 | 정규화에서 `? ! .`를 무시하고, 정답 변형에 **괄호를 그대로 둔 원형**을 포함 | 스파이크에서 발견한 결함 수정(14장). PRD D36 |
 | T11 | 괄호 밖의 쉼표만 구분자 | 실제 데이터에 괄호 안 쉼표가 있음. PRD D35 |
-| T12 | `--apply` 전에 DB를 `data/backup/`으로 자동 복사 | merge가 뜻·노트를 덮어쓰므로 되돌릴 수 있게 한다 |
+| T12 | merge `--apply` 전에 **`VACUUM INTO`로** `data/backup/`에 일관된 백업을 만든다 | merge가 뜻·노트를 덮어쓰므로 되돌릴 수 있게 한다. 파일 복사는 서버가 쓰는 도중이면 깨진 백업이 될 수 있다 |
 | T13 | DB 이름은 **대소문자를 무시하고 중복 판정** | Windows는 `Latin.db`와 `latin.db`를 같은 파일로 본다. Linux(WSL) 개발본에서만 통과하는 코드를 막는다 |
 | T14 | `.bat`은 **CRLF, BOM 없는 UTF-8**로 저장 (`.gitattributes`로 강제) | WSL에서 만든 LF 파일은 `cmd.exe`에서 오작동할 수 있다 |
 | T15 | 허용 `Host`를 **설정으로 추가**할 수 있게 한다 (`WORDQUIZ_ALLOWED_HOSTS`, `--allow-host`) | 향후 홈 네트워크 서버의 `nas.local` 같은 점 포함 이름을 허용하기 위해 (15장) |
@@ -50,7 +50,8 @@
 | `@types/node` | 22.20.4 | **최신(26)이 아니라 22.x**. 최소 런타임(Node 22.13)보다 새 API를 타입이 허용하는 것을 줄이기 위함 |
 | `vitest` | 5.0.1 | `node:sqlite` 로드 확인. `ExperimentalWarning`은 `execArgv`로 억제 |
 | `esbuild` | 0.28.2 | |
-| `read-excel-file` | 9.3.10 | 번들 성공, 빈 셀은 `null` |
+| `read-excel-file` | 9.3.10 | 번들 성공, 빈 셀은 `null`, **문자열 셀의 앞뒤 공백을 스스로 제거** |
+| `fflate` | 0.8.3 | 테스트용 xlsx 생성(M3), 패키징(M8). `read-excel-file`의 하위 의존성으로 이미 설치돼 있던 버전을 명시적으로 고정 |
 
 **tsconfig 규칙**: `module: ESNext` + `moduleResolution: Bundler`, `strict`, `noUncheckedIndexedAccess`, `verbatimModuleSyntax`. 서버·CLI·클라이언트가 모두 번들되므로 확장자 없는 import를 쓴다(`NodeNext`는 `.ts` 확장자를 강제해 부적합). `package.json`에는 `"type":"module"`이 필수다(없으면 TS1295 오류). `tsconfig.client.json`은 React 도입 시점인 M5에 추가한다.
 
@@ -383,7 +384,7 @@ import.bat <file.xlsx> [옵션]              (배포본. chcp 65001 설정 포�
 node import.mjs <file.xlsx> [옵션]         (개발)
 
 대상 선택 (둘 중 하나 필수)
-  --db <name>          기존 DB에 merge          예: --db latin.db
+  --db <name>          기존 DB에 merge          예: --db latin.db   (.db 생략 가능)
   --new-db <name>      새 DB 생성               예: --new-db latin_2   (.db 자동 부여)
   --lang <language>    --new-db와 함께 필수. 현재 latin만 지원
 
@@ -392,77 +393,114 @@ node import.mjs <file.xlsx> [옵션]         (개발)
   --apply              반영 모드 — 오류가 없을 때만 DB를 변경
 
 기타
-  --sheet <name>       읽을 시트 (기본: 첫 번째 시트)
+  --sheet <name>       읽을 시트 (기본: 첫 번째 시트, 이름은 대소문자 무시)
   --report <path>      리포트 파일 경로 (기본: reports/<xlsx이름>_<yyyyMMdd-HHmmss>.txt)
+  -h, --help           도움말
 ```
-- 검증 모드에서 `--db`를 주면 기존 DB를 **읽기 전용**으로 열어 비교한다. `--new-db`는 파일을 만들지 않고 이름이 이미 쓰이고 있는지만 검사한다(있으면 오류, **대소문자 무시**, T13).
-- 종료 코드: `0` 정상, `1` 검증 오류가 있어 반영하지 않음, `2` 사용법·파일 입출력 오류.
+- 검증 모드에서 `--db`를 주면 기존 DB를 **읽기 전용**으로 열어 비교한다. `--new-db`는 파일을 만들지 않고 이름이 이미 쓰이고 있는지만 검사한다(있으면 오류, **대소문자 무시**, T13). 오류 메시지는 **디스크에 있는 실제 파일 이름**을 알려 준다(사용자가 `Latin`을 쳤고 파일이 `latin.db`이면 `--db latin.db`를 안내).
+- `--db`는 M2의 `resolveDatabase`(유효한 이름 + 목록에 있는 DB만)로 해석하므로 클라이언트 입력이 경로가 되지 않는다(T9). 없는 DB면 존재하는 DB 이름 목록을 보여 준다.
+- 알 수 없는 옵션은 `-h`와 함께 있어도 오류다(엄격한 인자 해석).
+- 콘솔 출력은 UTF-8이다. Windows 콘솔에서 글자가 깨지지 않게 하려면 `import.bat`으로 실행한다(`chcp 65001`). `node import.mjs`를 직접 실행하면 콘솔 표시만 깨질 수 있고 **리포트 파일은 코드 페이지와 무관하게 UTF-8**이다.
 
 ### 6.2 Excel 읽기와 검증
-1. 시트의 첫 행을 헤더로 본다. **헤더 이름으로 열을 매핑**한다: `단어`(필수), `뜻1`~`뜻4`(`뜻1` 필수), `노트`(선택). 열 순서는 자유이고, 알 수 없는 열은 경고 후 무시한다.
-2. 데이터 행마다 다음을 처리한다.
+1. 시트의 첫 행을 헤더로 본다. **헤더 이름으로 열을 매핑**한다: `단어`(필수), `뜻1`~`뜻4`(`뜻1` 필수), `노트`(선택). 열 순서는 자유이다. 모르는 열과 같은 이름이 반복되는 열은 경고 후 무시하고(앞선 열을 쓴다), 빈 헤더 칸은 조용히 건너뛴다.
+2. 텍스트 셀은 **trim + NFC**로 저장한다. (`read-excel-file`이 문자열 셀의 앞뒤 공백을 이미 제거하므로 "공백을 제거함" 경고는 발생시킬 수 없어 두지 않는다.) 숫자 셀은 문자열로 바꾸고 경고, 날짜·불리언 셀은 오류다.
+3. 내용이 전혀 없는 행은 **조용히 건너뛰고** 읽은 행 수에 세지 않는다. 행 번호는 Excel 행 번호(헤더 = 1행)이다.
+4. 문제는 **처음 발견한 곳에서 멈추지 않고 전부 모아** 행 순서대로 리포트한다.
 
 | 구분 | 조건 | 처리 |
 |------|------|------|
+| **오류** | 필수 열(`단어`, `뜻1`)이 헤더에 없음 | 반영 차단. 데이터 행은 읽지 않음 |
+| **오류** | 시트가 비었거나 헤더 아래에 데이터 행이 없음 | 반영 차단 |
 | **오류** | 표제어가 비었음 | 반영 차단 |
 | **오류** | 뜻 열이 모두 비었음 | 반영 차단 |
-| **오류** | 파일 안에서 표제어가 중복됨 (trim + NFC 후 일치) | 반영 차단, 두 행 번호를 함께 표시 |
-| **오류** | 셀에 `\|` 문자가 있음 | 반영 차단 (수정 화면의 묶음 구분자와 충돌) |
-| 경고 | 앞뒤 공백을 제거함 | 제거한 값으로 진행 |
+| **오류** | 파일 안에서 표제어가 중복됨 (trim + NFC 후 일치, 대소문자는 구분) | 반영 차단, 나중 행에 "first seen on row N"으로 **두 행 번호**를 함께 표시 |
+| **오류** | **뜻 셀**에 `\|` 문자가 있음 | 반영 차단 (뜻 편집 화면의 묶음 구분자와 충돌). 표제어·노트의 `\|`는 문제없음 |
+| **오류** | 지원하지 않는 셀 형식(날짜, 불리언) | 반영 차단 |
 | 경고 | 뜻 열 사이에 빈칸이 있음 (예: 뜻1, 뜻3만 채움) | 빈 열을 건너뛰고 진행 |
-| 경고 | 뜻 셀의 괄호 짝이 맞지 않음 | 그대로 진행 (채점은 짝 없는 괄호를 무시) |
-| 경고 | 뜻 셀에서 분리한 동의어가 비었음 (예: `a,,b`) | 빈 항목 제거 |
+| 경고 | 뜻 셀의 괄호 짝이 맞지 않음 | 그대로 진행 (M1: 짝 없는 괄호는 일반 문자) |
+| 경고 | 뜻 셀에서 분리한 동의어가 비었음 (예: `a,,b`) | 빈 항목 제거 (`splitTopRaw`로 감지) |
+| 경고 | 뜻 셀에 쉼표뿐이라 동의어가 하나도 없음 | 그 열을 빈 열로 취급 |
+| 경고 | 숫자 셀을 텍스트로 바꿈 / NFC로 바꿈 | 바꾼 값으로 진행 |
+| 경고 | 모르는 열, 반복된 열 | 무시 |
 
-3. 표제어의 동일성 기준은 **trim + NFC 후 완전 일치**다. 대소문자와 장음 기호는 구분한다.
-4. 뜻은 각 열을 `splitTop`(괄호 밖 쉼표)으로 나눠 묶음 하나로 만든다. 노트는 그대로 저장한다.
+5. 표제어의 동일성 기준은 **trim + NFC 후 완전 일치**다. 대소문자와 장음 기호는 구분한다.
+6. 뜻은 각 열을 `splitTop`(괄호 밖 쉼표)으로 나눠 묶음 하나로 만들고 `validateMeanings`(M1)로 검증한다. 노트는 그대로 저장하고 빈 값은 `NULL`이다.
+7. 오류가 있는 행은 가져오지 않는다(그 행은 `entries`에서 빠진다). 경고만 있는 행은 가져온다.
 
 ### 6.3 merge 동작 (`--db`)
 | 분류 | 조건 | 반영 |
 |------|------|------|
 | 추가 | DB에 없는 표제어 | `word` + `word_progress`(기본값) 삽입 |
-| 갱신 | 있으나 뜻 또는 노트가 다름 | `meanings`, `note`, `updated_at`만 변경. **진행 상태는 보존** |
+| 갱신 | 있으나 뜻 또는 노트가 다름 (**노트는 `NULL`과 빈 문자열을 같게** 본다, 뜻은 묶음·동의어 순서까지 비교) | `meanings`, `note`, `updated_at`만 변경. **표제어와 진행 상태는 보존** |
 | 변경 없음 | 뜻·노트가 같음 | 아무것도 하지 않음 |
-| Excel에서 사라짐 | DB에는 있으나 Excel에 없음 | **삭제하지 않고** 리포트에만 표시 (D31) |
+| Excel에서 사라짐 | DB에는 있으나 Excel에 없음 | **삭제하지 않고** 리포트에만 표시 (D31). 그 단어의 내용과 진행 상태 행도 그대로 |
 
 - `--new-db`는 위 규칙에서 전부 "추가"가 된다.
-- 반영 순서: 검증 → 오류 있으면 종료 코드 1 → (merge인 경우) `data/backup/<name>.<yyyyMMdd-HHmmss>.db`로 파일 복사 → `BEGIN IMMEDIATE` → 삽입·갱신 → `COMMIT` → 리포트 저장. 실패하면 `ROLLBACK`.
-- 사용자가 앱에서 고친 뜻을 Excel이 다시 덮어쓸 수 있으므로, **갱신 항목은 리포트에 이전 → 이후 값을 함께 표시**한다.
-- 서버가 실행 중이어도 `busy_timeout` 덕분에 동작하지만, 반영은 서버를 종료한 상태에서 하는 것을 권장한다고 리포트 끝에 안내한다.
+- **반영 순서**: 검증 → 오류가 있으면 종료 코드 1로 **아무것도 하지 않음** → **변경이 0건이면 DB를 열지도 백업하지도 않고** "Nothing to apply" → (merge) `data/backup/<이름>.<yyyyMMdd-HHmmss>.db`로 백업 → 읽기·쓰기로 열어 `BEGIN IMMEDIATE` → 삽입·갱신 → `COMMIT` → 리포트 저장. 실패하면 `ROLLBACK`이고 `--new-db`였다면 **새로 만든 파일을 지운다**(반쯤 채워진 DB를 남기지 않음).
+- **백업은 `VACUUM INTO`로 한다(T12).** 파일 복사는 서버가 쓰는 도중이면 깨진 백업이 될 수 있지만, `VACUUM INTO`는 서버가 실행 중이어도 일관된 스냅샷을 만든다. **대상 파일이 이미 있으면 실패**하므로 기존 백업을 덮어쓰지 않고, 같은 초에 이미 있으면 `-2`, `-3` 접미사를 붙인다. 트랜잭션 안에서는 실행할 수 없어 반영 트랜잭션 **앞에서** 한다. (Linux와 Windows `node.exe`에서 확인)
+- **서버가 실행 중이어도 안전하다**: import는 `recoverSessions`를 켜지 않으므로 서버의 살아 있는 세션을 닫지 않고, 쓰기 잠금은 `busy_timeout`(5초)만큼 기다린다. 그래도 반영은 서버를 종료한 상태에서 하는 것을 권장한다(리포트에 안내).
+- 사용자가 앱에서 고친 뜻을 Excel이 다시 덮어쓸 수 있으므로 **갱신 항목은 이전 → 이후 값을 함께 표시**한다.
+- **여러 Excel 파일**: 한 DB에 두 번째 파일을 merge하면 첫 번째 파일의 단어가 전부 "Excel에서 사라짐"으로 나온다(삭제되지는 않는다). 파일마다 **별도 DB**를 두는 것이 자연스럽다(PRD: 한 언어에 DB 여러 개).
 
 ### 6.4 리포트 형식
-stdout과 파일에 같은 내용을 쓴다. 인코딩은 **UTF-8**(BOM 없음).
+콘솔과 파일에 **같은 내용**을 쓰고, 콘솔에는 그 뒤에 `Report saved to: <경로>` 한 줄만 더 붙는다. 인코딩은 **UTF-8**(BOM 없음), 시각은 로컬 시간이다. 섹션 순서는 **Summary → Errors → Warnings → Updated → Added → Missing in Excel → Result**(오류가 위쪽).
 ```
 Word Quiz Import Report
 =======================
-File     : data/latin_wortschatz.xlsx  (sheet: Wortschatz)
-Target   : latin.db (merge)            Mode: VALIDATE (no changes made)
+File     : words.xlsx  (sheet: Wortschatz)
+Target   : latin.db (merge into existing database)
+Mode     : VALIDATE (no changes made)
 Time     : 2026-09-20 15:20:31
 
 Summary
-  Rows read         : 178
-  Added             : 12
-  Updated           : 3
-  Unchanged         : 163
-  Missing in Excel  : 0     (kept in DB, not deleted)
-  Warnings          : 2
-  Errors            : 0
-
-Updated
-  row 31  plēnus, a, um (m. Gen.)
-          meanings : [voll (von / mit)]  ->  [voll (von / mit), erfüllt]
-  ...
-
-Warnings
-  row 58  meanings: unbalanced parenthesis in "..."
-  ...
+  Rows read         : 13
+  Added             : 1
+  Updated           : 2
+  Unchanged         : 9
+  Missing in Excel  : 167     (kept in DB, not deleted)
+  Warnings          : 1
+  Errors            : 1
 
 Errors
-  (none)
+  row 14    뜻2: contains "|", which separates meaning groups in the editor: "x | y"
 
-Result: OK to apply. Re-run with --apply to write these changes.
+Warnings
+  row 13    뜻1: unbalanced parenthesis in "sich (setzen"
+
+Updated
+  row 4     mittere, mittō, mīsī, missum
+            meanings : [(los)lassen, schicken, werfen]  ->  [fassen, nehmen, ergreifen]
+  row 6     calamitās, calamitātis f
+            note     : (none)  ->  wichtig
+
+Added
+  row 13    neues Wort
+
+Missing in Excel
+  tergum
+  ...
+  ... and 137 more (they stay in the database)
+
+Result: NOT applied. Fix the errors in the Excel file and run again.
 ```
-- 오류가 있으면 마지막 줄이 `Result: NOT applied. Fix the errors in the Excel file and run again.`으로 바뀐다.
-- 콘솔 UTF-8은 `import.bat`의 `chcp 65001`이 맡는다. 파일 리포트는 코드 페이지와 무관하게 UTF-8로 쓴다.
+- 뜻은 `[fassen, nehmen] [erobern]`(묶음마다 대괄호)로 보여 준다. 갱신 항목은 **바뀐 것만** 표시한다.
+- **"Missing in Excel"은 30개까지만 나열**하고 나머지는 개수로 요약한다(위 6.3의 여러 파일 상황에서 수백 줄이 되는 것을 막기 위함). 요약의 건수는 항상 전체이다. Errors·Warnings·Updated·Added는 줄이지 않는다.
+- `Result` 줄: `NOT applied`(오류 있음), `OK to apply. Re-run with --apply …`(검증 통과, merge면 서버 종료 권장 안내 한 줄 추가), `APPLIED. Added N, updated M.`(반영 완료, 헤더에 `Backup` 경로 표시), `Nothing to apply`(변경 없음).
+- 리포트 파일을 저장하지 못해도(경로가 막힘 등) **이미 일어난 반영의 결과를 가리지 않는다**: 경고만 출력하고 종료 코드는 그대로다.
+
+### 6.5 종료 코드와 오류 처리
+| 종료 코드 | 의미 |
+|-----------|------|
+| 0 | 정상. **경고만 있어도 0**. 변경이 없어도 0 |
+| 1 | Excel 파일에 **오류**가 있음 (`--apply`가 아니어도 1이라 스크립트에서 게이트로 쓸 수 있음) |
+| 2 | 사용법 오류, 또는 파일·DB 문제(파일 없음, 시트 없음, DB 없음, 이름 충돌, DB 사용 중) |
+
+- 사용자가 고칠 수 있는 문제는 **무엇을 하면 되는지** 말한다: Excel이 파일을 열어 둔 경우(`EBUSY`/`EPERM`/`EACCES`) "Close the file in Excel and try again", 옛 `.xls`는 ".xlsx로 저장하라", 잘못된 파일은 "not a valid .xlsx file", DB가 잠긴 경우 "The database is busy. Stop the Word Quiz server and try again."
+- **출력을 일찍 닫는 파이프**(`| head`, `| more`)로 넘겨도 `EPIPE`로 죽지 않는다(진입점이 stdout의 `EPIPE`를 무시).
+
+### 6.6 모듈 구성
+`src/cli/`: `xlsx.ts`(시트 읽기, 오류 설명), `validate.ts`(헤더 매핑·행 검증), `plan.ts`(비교), `report.ts`(리포트 문자열), `apply.ts`(백업·트랜잭션·롤백), `args.ts`(인자), `run.ts`(전체 흐름, `runImport(argv, env)`가 종료 코드를 반환하고 출력 함수를 주입받아 프로세스 없이 테스트 가능), `errors.ts`(`CliError`), `index.ts`(process 연결만). DB 접근은 M2의 `src/server/db`를 그대로 쓰고 `getAllWords`, `updateWordContent`, `findExistingDbName`을 여기서 추가했다. `src/cli`는 `express`·`http`·서버 앱 코드를 import하지 않는다.
 
 ---
 
@@ -600,6 +638,8 @@ node --disable-warning=ExperimentalWarning "%~dp0import.mjs" %*
 | 제출 후 뜻 수정으로 과거 `hits`가 어긋남 | 이력 표시 오류 | 이번 범위에 이력 화면이 없어 영향 없음. 이력 화면을 만들 때 스냅샷 컬럼을 추가한다 |
 | 두 기기에서 동시 접속 | 같은 세션을 함께 조작 | 단일 사용자 전제. 두 번째 기기는 같은 세션 상태를 그대로 본다 |
 | 최신 Node에만 있는 `node:sqlite` API(`isTransaction`, `location()`, `errcode`, `timeout` 옵션)를 무심코 사용 | 이 PC(Node 24.14)에서는 통과하지만 최소 버전 22.13에서 실행 시 오류 | 사용 API를 3.2의 목록으로 한정하고 오류는 메시지로 판별한다. 22.13 실제 동작은 M9 수동 체크리스트로 확인한다 |
+| Excel이 열어 둔 `.xlsx`를 Windows에서 읽으려 함 | 읽기 실패(`EBUSY` 등) | 친절한 메시지("Close the file in Excel"). 사용자 PC에서의 실제 동작은 M9 수동 체크리스트로 확인 |
+| 서버가 실행 중일 때 import 반영 | 쓰기 잠금 대기 후 실패 | `busy_timeout` 5초, 실패 시 "서버를 종료하고 다시 시도" 안내, `recoverSessions`를 켜지 않아 살아 있는 세션은 보존 |
 | `@types/node` 22.20이 Node 22.13에 없는 API를 허용 | 타입 검사는 통과하지만 최소 버전에서 실행 시 오류 | 완전히 막을 수 없는 잔여 위험. 새 Node API를 쓸 때 도입 버전을 확인하고, 사용자 PC의 Node 버전을 M9 수동 체크리스트로 확인한다 |
 | TypeScript 7·vitest 5 등 최신 메이저가 이후 도입 라이브러리(Vite, MUI)와 어긋남 | 설치·빌드 실패 | 라이브러리 도입 시(M5) 즉시 `tsc -b`와 테스트를 돌려 확인하고, 문제가 있으면 TypeScript 6.x로 내린다(lockfile로 복원 가능) |
 | `.bat`이 LF로 저장됨 | `cmd.exe`에서 오작동 | `.gitattributes` + 빌드 시 CRLF 변환 + 배포본 줄바꿈 검증 (T14) |
@@ -709,6 +749,28 @@ node --disable-warning=ExperimentalWarning "%~dp0import.mjs" %*
 
 - **이 검사로 발견해 고친 결함**: 처음에는 `createDatabase`가 OS 파일시스템의 대소문자 규칙에 의존했다. Windows에서는 거부되지만 Linux(WSL)에서는 `latin.db`를 `Latin.db`와 **다른 파일로** 만들어 버렸다. 그래서 `dbNameExists` 검사를 `createDatabase` 안으로 옮겨 모든 OS에서 같게 동작하도록 했다(3.1).
 - 자동 테스트 136개(errors 6, migrations 21, transaction 7, open 16, names 30, catalog 17, sessions 6, queries 33)는 임시 디렉터리의 실제 파일 DB를 쓴다.
+
+### 14.6 M3 Import CLI 확인 (2026-09-20, `npm run smoke:import`)
+실제 샘플(`data/latin_wortschatz.xlsx`, 178단어)로 **번들된 `dist/import.mjs`를 Linux와 Windows(`node.exe`) 양쪽에서** 사용자가 쓰는 방식 그대로 실행했고 63개 검사가 전부 통과했다(각 플랫폼 31~32개).
+
+| 시나리오 | 확인한 것 |
+|----------|-----------|
+| 1. 검증 모드 `--new-db` | 종료 0, **178건 추가 예정, 오류 0**, DB 파일 미생성, 리포트 생성, 장음 기호(`Prōmētheus`, `quō?`) UTF-8 보존, BOM 없음, 깨진 문자 없음 |
+| 2. `--apply` | 178단어 적재, 새 DB는 백업 없음 |
+| 3. 같은 파일로 다시 검증 | **178건 전부 변경 없음**, "Nothing to apply" |
+| 4. 셀 하나를 바꾼 사본 | 검증: **1건 갱신, 이전 → 이후 표시**, 검증 모드는 백업 안 만듦. 반영: 백업 1개 생성(`VACUUM INTO`, **Windows에서도 동작**), 내용 있음 |
+| 5. `--new-db Latin` | 종료 2, 실제 이름(`latin.db`)을 알려 주고 DB는 그대로 |
+| 6. 출력을 `head`로 닫는 파이프 | Linux 종료 0, 양쪽 stderr 비어 있음 |
+
+- 자동 테스트: `src/cli` 135개(xlsx 8, validate 34, plan 10, report 19, apply 12, args 25, run 24, launcher 3), M1·M2 보강 19개. 전체 **524개**(21개 파일).
+- **결함 주입 검증**으로 테스트가 실제로 잡는지 확인했다(검증 모드가 DB를 씀, 오류 무시하고 반영, 백업 생략·덮어쓰기, 롤백 누락, 사라진 단어 삭제, 갱신이 진행 상태 초기화, `|` 검사 제거, 중복 미감지, 빈 행 처리, 노트 null/빈 문자열, 대소문자 비교, 세션 복구 켜짐, BOM, 종료 코드 등 20여 가지).
+- **검증 중 발견해 고친 결함**
+  1. `--new-db Latin`이 기존 `latin.db`와 충돌할 때 안내가 **사용자가 친 이름**(`--db Latin.db`)을 제안했다. 대소문자를 구분하는 환경에서는 없는 이름이라 틀린 안내였다 → 디스크의 실제 이름(`findExistingDbName`)을 쓰도록 수정.
+  2. 출력을 `| head`처럼 일찍 닫는 파이프로 넘기면 `EPIPE`로 스택 트레이스와 함께 종료 코드 1로 죽었다 → 진입점에서 stdout의 `EPIPE`를 무시.
+  3. **테스트 공백**: "사라진 단어를 삭제하지 않는다" 테스트가 `word` 테이블만 봐서, 진행 상태(`word_progress`) 행이 지워져도 통과했다. 그 단어는 pool 조회(조인)에서 조용히 빠지는 손상이다 → 진행 상태와 내용까지 확인하도록 보강.
+  4. 여러 파일을 merge하면 "Excel에서 사라짐"이 수백 줄이 되는 문제를 실제 리포트를 읽다가 발견 → 30개까지만 나열.
+- **관찰**: `smoke:win`의 "포트 사용 중" 검사가 한 번 실패했다가 두 번 연속 재실행에서는 통과했다. 원인은 확정하지 못했다(재현되지 않는 일시적 현상으로 기록). `smoke:import`의 Windows 종료 코드 141은 `head`가 파이프를 닫아 **WSL 중계 프로세스**가 받은 SIGPIPE이지 프로그램의 종료 코드가 아니므로 그 항목은 stderr만 검사한다.
+- 최소 버전 Node 22.13에서의 `VACUUM INTO`(SQLite 3.27+) 실행은 이 PC로 검증할 수 없어 M9에 남긴다.
 
 ---
 
