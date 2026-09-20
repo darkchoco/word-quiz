@@ -1,7 +1,7 @@
 # Word Quiz 실행 계획
 
-> 상태: v1.5 (진행 중 · M0~M3 완료) · 작성일: 2026-09-20  
-> 기준 문서: `docs/PRD.md` v1.3, `docs/TECH-SPEC.md` v1.5, `docs/word-quiz-mockup.html`  
+> 상태: v1.6 (진행 중 · M0~M4 완료) · 작성일: 2026-09-20  
+> 기준 문서: `docs/PRD.md` v1.3, `docs/TECH-SPEC.md` v1.6, `docs/word-quiz-mockup.html`  
 > 범위: **무엇을 어떤 순서로 만들고 어떻게 확인하는가**. 요구사항은 PRD, 설계는 기술 스펙이 다룬다.
 
 ---
@@ -25,7 +25,7 @@
 | M1 | 공용 규칙 (`src/shared`) | M | [x] 2026-09-20 |
 | M2 | DB 계층 | M | [x] 2026-09-20 |
 | M3 | Import CLI | L | [x] 2026-09-20 |
-| M4 | 서버 서비스와 API | L | [ ] |
+| M4 | 서버 서비스와 API | L | [x] 2026-09-20 |
 | M5 | 클라이언트 골격 · 시작 · 공통 | M | [ ] |
 | M6 | 클라이언트 퀴즈 흐름 | L | [ ] |
 | M7 | 클라이언트 오답 · 단어 관리 · 설정 | M | [ ] |
@@ -64,7 +64,7 @@
 **M0 결과 (2026-09-20)**: 완료 기준 ①~⑤ 전부 충족. 스모크 20/20 통과.
 - 판별 결과: `read-excel-file` 번들 성공(대체안 불필요), `WSLENV=WORDQUIZ_HOME/p`로 Windows 프로세스에 환경변수 전달 가능, vitest `ExperimentalWarning`은 `execArgv`로 억제됨.
 - 고정 버전과 tsconfig 결정(`Bundler` 해석, `@types/node` 22.x)은 TECH-SPEC 2.1에 기록했고, 스모크 상세는 TECH-SPEC 14.4에 있다.
-- `npm run typecheck` / `npm test -- <이름>` / `npm run build` / `npm run smoke:win`(서버·CLI 번들의 Windows 스모크) / `npm run smoke:win-db`(DB 계층의 Linux·Windows 동작 확인, M2) / `npm run smoke:import`(실제 샘플로 하는 import CLI 종단 검증, Linux·Windows, M3)가 이후 마일스톤의 기본 검증 명령이다.
+- `npm run typecheck` / `npm test -- <이름>` / `npm run build` / `npm run smoke:win`(서버·CLI 번들의 Windows 스모크) / `npm run smoke:win-db`(DB 계층의 Linux·Windows 동작 확인, M2) / `npm run smoke:import`(실제 샘플로 하는 import CLI 종단 검증, Linux·Windows, M3) / `npm run smoke:server`(실제 서버를 띄워 HTTP로 플레이, Linux·Windows, M4)가 이후 마일스톤의 기본 검증 명령이다.
 - 최소 버전 Node 22.13은 이 PC(24.14)에서 검증할 수 없어 M9 수동 체크리스트에 남는다.
 
 ### M1. 공용 규칙 `src/shared` (M)
@@ -126,6 +126,15 @@
 | 완료 기준 | ① TECH-SPEC 5.1의 모든 엔드포인트가 명시된 오류 코드를 반환 ② **다중 라운드 시나리오 테스트** 통과: 라운드 N에서 Perfect → N+1 pool에 없고 N+2에 있음, 두 번째 Perfect → N+3, 세 번째 Perfect에서 `askDone`, 오답 → N+1에 재출제, 부분 정답이 상태 바 정답에 안 들어감, 완료 표시와 해제, 재시험은 오답 마크만 ③ 제출이 한 트랜잭션(도중 실패 시 `word_progress` 불변) ④ 새로고침(`GET /rounds/current`)으로 이어서 풀기 ⑤ 잘못된 `Host`·잘못된 `Content-Type`이 거부됨 ⑥ 종료 처리 함수를 호출하면 `ended_at`이 기록됨, **Linux에서 실제 `SIGTERM`을 보내는 통합 테스트**도 통과 ⑦ DB 파일이 사라진 상태에서 `DB_NOT_FOUND` ⑧ `nas.local` 같은 점 포함 Host가 기본 설정에서는 403이고 `--allow-host nas.local`을 주면 200 ⑨ 서버 기동 시 `server.lock`이 생기고 정상 종료 시 사라지며, 남아 있어도 다음 기동이 덮어씀 |
 | 검증 | `npm test -- server`(가능하면 파일별로 `npm test -- rounds`), `app.listen(0)` + `fetch` |
 | 커밋 제안 | `feat: Add session and settings API` / `feat: Add round and answer API` / `feat: Add words API` / `feat: Add request guards and graceful shutdown` |
+
+**M4 결과 (2026-09-20)**: 완료 기준 ①~⑨ 충족. 자동 테스트 329개 추가(**전체 853개, 33개 파일**), `smoke:server` **Linux·Windows 47/47**, `smoke:win` 24/24·`smoke:win-db`·`smoke:import` 63/63 유지. 결함 주입 26가지 중 25가지 즉시 검출.
+- **설계 결함 발견(D38)**: 라운드 번호는 Start를 눌러야만 올라가는데 Perfect 단어가 N+2·N+3으로 밀리면 pool이 비어 **영원히 시작할 수 없다**(작은 DB에서 즉시, 큰 DB에서 마무리 단계). 승인을 받아 **pool이 비고 완료되지 않은 단어가 남아 있으면 라운드 번호를 그 단어들의 가장 이른 `next_round`로 건너뛰도록** PRD v1.4(D38)와 TECH-SPEC 4.3을 고쳤다. `PoolInfo`에 `retestRoundNumber`를 추가했다(재시험의 번호는 일반 라운드와 다를 수 있음).
+- **프로세스 테스트가 잡은 경합**: 시그널 핸들러를 서버 시작 뒤에 등록하면 "running" 메시지 직후의 `SIGTERM`이 기본 동작으로 처리된다. 시작 전에 등록하도록 고쳤다(3회 연속 안정).
+- **계획 대비 변경**: `db/rounds.ts`에 `getLatestRoundId`(마지막 문제의 "완료 표시"는 라운드가 이미 끝난 뒤에 오므로)를 추가했다. `ERROR_STATUS`에 `NOT_FOUND`, `PAYLOAD_TOO_LARGE`를 추가했다. `GET /pool`의 응답 필드가 하나 늘었다. `Origin` 검사는 하지 않기로 한 대로 구현하지 않았다.
+- **`DB_TOO_NEW`**는 목록 스캔에서 먼저 걸러져 `POST /session`으로는 사실상 나오지 않는다(TECH-SPEC 5.1 참고).
+- **M0 스모크 갱신**: `scripts/win-smoke.sh`가 예전 임시 서버의 `/health`를 검사하고 있어 실제 서버(`/api/databases`, Host 거부, 잠금 파일)를 검사하도록 바꿨고, **모든 서버 시작에 `--no-open`을 붙였다**(붙이지 않으면 실제 서버가 사용자의 브라우저를 연다).
+- **스크립트 실수 1건**: `smoke:server`의 첫 실행에서 검사식이 JSON 필드 순서(`answered`, `total`)를 반대로 가정해 2건이 실패했다. 실제 응답을 출력해 서버가 아니라 검사식의 오류임을 확인하고 고쳤다.
+- **M5에서 쓸 것**: 서버가 `APP_HOME/public`을 서빙한다(`index.html`이 없으면 안내 텍스트). 클라이언트는 `NO_SESSION`이면 시작 화면으로, `DB_NOT_FOUND`면 "The selected DB does not exist." 알림 후 시작 화면으로 돌아간다. 응답 타입은 `src/shared/api.ts`가 단일 출처이고 **`ERROR_STATUS`가 오류 코드 목록**이다. 개발 중에는 Vite 프록시로 `/api`를 서버에 넘긴다.
 
 ### M5. 클라이언트 골격 · 시작 · 공통 (M)
 | 구분 | 내용 |
@@ -205,6 +214,7 @@ curl.exe -s http://localhost:35000/api/databases      # WSL curl 대신 curl.exe
 | 강제 종료 후 복구 | 세션 시작 → `Stop-Process -Force` → 재기동 후 같은 DB 시작 | 이전 세션 `ended_at`이 `last_seen_at`으로 채워짐 |
 | UTF-8 | `import.bat`(또는 `cmd.exe /c chcp 65001 ...`)의 출력을 **파일로 리다이렉트**해 바이트 확인 | 장음 기호(`ā ē ī ō ū`)·움라우트가 깨지지 않음 |
 | 배포 스크립트 | `deploy` 두 번 실행 | `data/`·`reports/` 보존 |
+| 서버 종단 | `npm run smoke:server`: import한 실제 DB로 서버를 띄워 HTTP로 세션·라운드·채점·오답 목록·새로고침 이어가기, 다른 Host 403·JSON 아님 415·포트 충돌, Linux `SIGTERM` 종료, **Windows 강제 종료 후 재기동 시 세션 보정**(TECH-SPEC 14.7) | Linux·Windows 모두 통과 |
 | import CLI 종단 | `npm run smoke:import`: 실제 샘플로 검증 → 적재 → 재검증(전부 변경 없음) → 한 셀 변경 → 갱신·백업(`VACUUM INTO`) → 대소문자 이름 충돌 거부, UTF-8 리포트(TECH-SPEC 14.6) | Linux·Windows 모두 통과 |
 | DB 계층 동작 | `npm run smoke:win-db`: 같은 검사를 Linux와 `node.exe`에서 실행(대소문자 이름 충돌 거부, 열린 DB 삭제·이름 변경 차단, 부속 파일 없음 등, TECH-SPEC 14.5) | 양쪽 모두 통과 |
 | 파일 호환 | Windows에서 만든 DB를 WSL에서 **읽기 전용·순차**로 열고, 그 반대도 확인. **같은 DB를 동시에 열지 않는다**(`/mnt/c` 잠금 불안정, TECH-SPEC 8.5) | 양쪽에서 읽힘 |

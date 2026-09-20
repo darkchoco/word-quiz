@@ -1,6 +1,6 @@
 # Word Quiz 기술 스펙
 
-> 상태: v1.5 (확정) · 작성일: 2026-09-20 · 최종 수정: 2026-09-20  
+> 상태: v1.6 (확정) · 작성일: 2026-09-20 · 최종 수정: 2026-09-20  
 > 기준 문서: `docs/PRD.md` v1.3, `docs/word-quiz-mockup.html`(영어 UI, 컨펌 완료)  
 > 범위: **어떻게 만드는가**. 제품 요구사항은 PRD가, 작업 순서는 별도 실행 계획 문서가 다룬다.
 
@@ -51,6 +51,8 @@
 | `vitest` | 5.0.1 | `node:sqlite` 로드 확인. `ExperimentalWarning`은 `execArgv`로 억제 |
 | `esbuild` | 0.28.2 | |
 | `read-excel-file` | 9.3.10 | 번들 성공, 빈 셀은 `null`, **문자열 셀의 앞뒤 공백을 스스로 제거** |
+| `express` | 5.2.1 | 서버(M4). **번들 1.18MB**(CLI의 5배), 직접 의존성 28개·설치 패키지 69개. Linux와 Windows에서 번들 실행 확인 |
+| `@types/express` | 5.0.6 | 타입(번들 밖) |
 | `fflate` | 0.8.3 | 테스트용 xlsx 생성(M3), 패키징(M8). `read-excel-file`의 하위 의존성으로 이미 설치돼 있던 버전을 명시적으로 고정 |
 
 **tsconfig 규칙**: `module: ESNext` + `moduleResolution: Bundler`, `strict`, `noUncheckedIndexedAccess`, `verbatimModuleSyntax`. 서버·CLI·클라이언트가 모두 번들되므로 확장자 없는 import를 쓴다(`NodeNext`는 `.ts` 확장자를 강제해 부적합). `package.json`에는 `"type":"module"`이 필수다(없으면 TS1295 오류). `tsconfig.client.json`은 React 도입 시점인 M5에 추가한다.
@@ -319,7 +321,7 @@ REST, JSON, 경로는 `/api` 아래. 오류 응답은 항상 `{ "error": { "code
 | 메서드 | 경로 | 요청 | 성공 응답 | 오류 코드 |
 |--------|------|------|-----------|-----------|
 | GET | `/databases` | | `{ databases: [{name, language, wordCount}] }` | |
-| POST | `/session` | `{ db }` | `SessionState` (201) | `INVALID_DB_NAME` 400, `DB_NOT_FOUND` 404, `DB_TOO_NEW` 409 |
+| POST | `/session` | `{ db }` | `SessionState` (201) | `INVALID_DB_NAME` 400, `DB_NOT_FOUND` 404, `DB_TOO_NEW` 409 (아래 참고) |
 | GET | `/session` | | `SessionState` | `NO_SESSION` 404 |
 | DELETE | `/session` | | 204 | |
 | GET | `/pool` | | `PoolInfo` | `NO_SESSION` |
@@ -333,7 +335,9 @@ REST, JSON, 경로는 `/api` 아래. 오류 응답은 항상 `{ "error": { "code
 | GET | `/settings` | | `{ questionsPerRound }` | |
 | PUT | `/settings` | `{ questionsPerRound }` (1~200 정수) | `{ questionsPerRound }` | `INVALID_SETTING` 400 |
 
-**공통 오류 코드** (5.1 표의 엔드포인트별 코드 외에 모든 엔드포인트에 나올 수 있다): `INVALID_REQUEST` 400(본문·파라미터 형식 오류), `FORBIDDEN_HOST` 403(Host 검사 실패, 9장), `UNSUPPORTED_MEDIA_TYPE` 415(쓰기 요청의 Content-Type이 JSON이 아님), `INTERNAL` 500. 코드별 HTTP 상태는 `ERROR_STATUS`(`src/shared/api.ts`)가 서버와 클라이언트의 단일 출처다.
+**공통 오류 코드** (5.1 표의 엔드포인트별 코드 외에 모든 엔드포인트에 나올 수 있다): `INVALID_REQUEST` 400(본문·파라미터 형식 오류, 깨진 JSON 포함), `FORBIDDEN_HOST` 403(Host 검사 실패, 9장), `NOT_FOUND` 404(알 수 없는 `/api/*` 경로), `PAYLOAD_TOO_LARGE` 413(본문이 100KB 초과), `UNSUPPORTED_MEDIA_TYPE` 415(쓰기 요청의 Content-Type이 JSON이 아님), `INTERNAL` 500(예상하지 못한 오류: **일반 메시지만 돌려주고 스택과 세부 내용은 서버 로그에만** 남긴다).
+
+**`DB_TOO_NEW`에 대한 참고**: 더 새로운 버전으로 만들어진 DB는 목록 스캔(`GET /databases`)에서 이미 걸러지므로(경고만 로그에 남는다) `POST /session`은 보통 `DB_NOT_FOUND`를 돌려준다. `DB_TOO_NEW`는 목록에 나타난 뒤 열기 전에 파일이 바뀌는 경합에서만 나온다. 사용자에게 보이는 결과는 "DB가 없다"는 같은 알림이다. 코드별 HTTP 상태는 `ERROR_STATUS`(`src/shared/api.ts`)가 서버와 클라이언트의 단일 출처다.
 
 ### 5.2 응답 타입 (`src/shared/api.ts`)
 ```ts
@@ -347,7 +351,10 @@ interface SessionState {
   questionsPerRound: number; stats: Stats; activeRound: RoundState | null;
 }
 interface PoolInfo {
-  nextRoundNumber: number; available: number; wrongAvailable: number;
+  nextRoundNumber: number;   // 다음 일반 라운드의 번호 (빈 라운드를 건너뛴 뒤의 값, D38)
+  available: number;         // 그 라운드에 출제 가능한 단어 수
+  retestRoundNumber: number; // 재시험을 시작하면 받을 번호 (일반과 다를 수 있음)
+  wrongAvailable: number;    // 그 재시험에 출제 가능한 오답 마크 단어 수
   questionsPerRound: number; allDone: boolean;
 }
 interface Question { position: number; headword: string; direction: 'word_to_meaning' | 'meaning_to_word' }
@@ -369,6 +376,10 @@ interface WordRow { id: number; headword: string; meanings: string[][]; done: bo
 ```
 
 ### 5.3 동작 규칙
+- **라운드 시작의 확인 순서**: 세션 → 이 세션에 열린 라운드가 있으면 `ROUND_IN_PROGRESS` → 방향이 `word_to_meaning`이 아니면 `DIRECTION_UNSUPPORTED`(입력 형식 오류 `INVALID_REQUEST`는 이보다 먼저) → 전 단어 완료면 `ALL_DONE` → 시작 번호 결정(4.3, D38) 후 출제할 단어가 없으면 `POOL_EMPTY`. 문제 수는 `min(설정값, 출제 가능 수)`이고 문제 순서는 `pickPool`의 무작위 순서로 **시작할 때 확정**된다.
+- **열린 라운드는 자기 세션의 것만 이어갈 수 있다.** 라운드를 취소하는 API는 없다(목업에 없음): 끝까지 풀거나 DB를 전환(세션 종료)하면 그 라운드는 중도 포기로 남고 번호는 소비된 채로 유지된다. 다른 세션의 라운드에 답하면 `NO_ACTIVE_ROUND`.
+- **제출의 확인 순서**: 입력 형식(`EMPTY_INPUT`, 최대 1000자, 위치는 1 이상의 정수) → 라운드가 이 세션의 것인지 → 문항이 있는지(없으면 `OUT_OF_ORDER`) → 이미 답했는지(`ALREADY_ANSWERED`) → 첫 미제출 문항인지(`OUT_OF_ORDER`).
+- **완료 표시의 `questionPosition`**은 이 세션의 **가장 최근 라운드**를 기준으로 본다. 마지막 문제에 답하면 라운드가 이미 끝나지만 그 문제의 "완료 표시" 확인창은 그 뒤에도 뜨기 때문이다. 그 문항이 그 단어의 것이고 제출되었으며 Wrong이 아니어야 한다.
 - `POST /rounds/:id/answers`는 **하나의 트랜잭션**에서 채점 → `round_question` 갱신 → `word_progress` 갱신 → (마지막 문제면) `round.ended_at` 기록까지 수행한다. `position`은 첫 번째 미제출 문제와 같아야 한다.
 - 클라이언트는 제출 후 결과 화면을 보여주고, 사용자가 Next(Enter)를 누르면 응답에 담긴 `round.question`을 화면에 올린다. 결과 화면에서 새로고침하면 다음 미제출 문제로 이동한다 (허용).
 - `DB_NOT_FOUND`는 클라이언트가 "The selected DB does not exist." 알림을 띄우고 시작 화면으로 돌아가는 신호다. 세션 도중 DB 파일이 사라져도 같은 코드로 처리한다.
@@ -564,6 +575,10 @@ pause
 - **포트 사용 중**(`EADDRINUSE`)이면 "이미 실행 중일 수 있습니다" 메시지를 출력하고 브라우저만 열고 종료한다.
 - 마지막 `pause`는 오류 메시지가 창과 함께 사라지지 않게 한다.
 - 콘솔 창을 닫거나 Ctrl+C로 종료하면 세션 종료 시각이 기록된다 (3.5).
+- **서버 옵션**: `--port <n>`(환경변수 `PORT`, `--port`가 우선, `0`은 시스템이 고르는 포트로 테스트용), `--local-only`(`127.0.0.1`에만 바인딩), `--no-open`, `--allow-host <name>`(반복·쉼표 구분, 환경변수 `WORDQUIZ_ALLOWED_HOSTS`와 합침), `-h`. 시작하면 접속 주소를 출력한다: `http://localhost:<port>`와, 로컬 전용이 아니면 이 PC의 **사설 IPv4** 주소로 만든 "같은 네트워크의 휴대폰용" 주소.
+- **종료 코드**: 0 정상 종료·`--help`, 1 포트가 이미 사용 중(안내 메시지 + 브라우저만 열고 종료), 2 잘못된 옵션.
+- **시그널 핸들러(`SIGINT`, `SIGTERM`, `SIGHUP`, `SIGBREAK`)는 서버를 시작하기 *전에* 등록한다.** 나중에 등록하면 "running" 메시지 직후에 온 시그널이 기본 동작(즉시 종료, 세션·잠금 정리 없음)으로 처리되는 경합이 있다(프로세스 테스트가 발견). 핸들러는 세션 종료 기록과 잠금 삭제를 **먼저 동기적으로** 하고 나서 연결을 닫는다(Windows는 콘솔 창을 닫고 약 10초 뒤 프로세스를 끝낸다).
+- `server.lock`(`{pid, port, startedAt}`)은 **`listen`에 성공한 뒤에만** 쓴다. 포트가 이미 사용 중인 두 번째 복사본은 잠금·세션·DB를 건드리지 않는다. 비정상 종료로 남은 잠금은 다음 기동이 덮어쓰고, 잠금 삭제는 **자기 pid의 것일 때만** 한다.
 
 ### 8.3 `import.bat`
 ```bat
@@ -598,7 +613,7 @@ node --disable-warning=ExperimentalWarning "%~dp0import.mjs" %*
 | 위험 | 대책 |
 |------|------|
 | 외부 웹페이지가 브라우저를 통해 `localhost:35000`에 요청을 보냄 (CSRF) | 쓰기 요청은 `Content-Type: application/json`을 요구하고 **CORS 헤더를 보내지 않는다**. 교차 출처 JSON 요청은 사전 요청(preflight)에서 막힌다 |
-| DNS 리바인딩 | `Host` 헤더 검사: 점이 없는 단일 이름(`localhost`, PC 이름), `127.0.0.1`, `[::1]`, 사설 IPv4(`10/8`, `172.16/12`, `192.168/16`)만 허용한다. 그 외는 403. 점이 있는 이름(예: `nas.local`)은 `WORDQUIZ_ALLOWED_HOSTS`(쉼표 구분) 또는 `--allow-host`로 **명시적으로 추가**해야 한다 (T15) |
+| DNS 리바인딩 | `Host` 헤더 검사(숫자로만 된 이름·`100.64.0.0/10`(VPN 대역)·링크 로컬·잘못된 포트는 거부, 검사 순서는 모든 경로에서 **가장 먼저**, 정적 파일 포함): 점이 없는 단일 이름(`localhost`, PC 이름), `127.0.0.1`, `[::1]`, 사설 IPv4(`10/8`, `172.16/12`, `192.168/16`)만 허용한다. 그 외는 403. 점이 있는 이름(예: `nas.local`)은 `WORDQUIZ_ALLOWED_HOSTS`(쉼표 구분) 또는 `--allow-host`로 **명시적으로 추가**해야 한다 (T15) |
 | 경로 조작 | DB 이름은 정규식 + 서버 목록 대조 (T9). 사용자 입력이 파일 경로에 직접 쓰이지 않는다 |
 | SQL 주입 | 모든 쿼리는 파라미터 바인딩(`prepare().run/get/all`)만 사용한다 |
 | HTML 주입 | React 기본 이스케이프 사용, `dangerouslySetInnerHTML` 금지 |
@@ -772,6 +787,28 @@ node --disable-warning=ExperimentalWarning "%~dp0import.mjs" %*
   4. 여러 파일을 merge하면 "Excel에서 사라짐"이 수백 줄이 되는 문제를 실제 리포트를 읽다가 발견 → 30개까지만 나열.
 - **관찰**: `smoke:win`의 "포트 사용 중" 검사가 한 번 실패했다가 두 번 연속 재실행에서는 통과했다. 원인은 확정하지 못했다(재현되지 않는 일시적 현상으로 기록). `smoke:import`의 Windows 종료 코드 141은 `head`가 파이프를 닫아 **WSL 중계 프로세스**가 받은 SIGPIPE이지 프로그램의 종료 코드가 아니므로 그 항목은 stderr만 검사한다.
 - 최소 버전 Node 22.13에서의 `VACUUM INTO`(SQLite 3.27+) 실행은 이 PC로 검증할 수 없어 M9에 남긴다.
+
+### 14.7 M4 서버 확인 (2026-09-20, `npm run smoke:server`)
+실제 샘플을 import한 DB로 **번들된 `dist/server.mjs`를 Linux와 Windows(`node.exe`) 양쪽에서** 띄우고 HTTP로 사용자의 흐름을 재현했다. 47개 검사 전부 통과(플랫폼별 23~24개).
+
+| 확인한 것 | 결과 |
+|-----------|------|
+| import → 서버 기동 → `GET /databases`(178단어) → 세션 → `GET /pool`(1라운드, 178개) → 라운드 시작(20문제) | 통과 |
+| 정답 입력 → **Perfect**, 상태 바 1/1 → 오답 입력 → Wrong·`canMarkDone:false`, 오답 목록에 등장, **새로고침 시 3번째 문제에서 이어짐** | 통과 |
+| 다른 Host **403**, JSON이 아닌 쓰기 **415**, 클라이언트 파일이 없을 때 안내 페이지 | 통과 |
+| 같은 포트로 두 번째 기동 | 종료 코드 **1**, "already in use", 첫 서버는 계속 응답 |
+| Linux `SIGTERM` | 종료 코드 **0**, 잠금 삭제, 세션 종료 시각 기록 |
+| **Windows 강제 종료 → 재기동 → 새 세션** | 잠금이 남고 세션이 미종료 상태로 남음 → 재기동이 잠금을 덮어쓰고 이전 세션을 **`last_seen_at`으로 보정**(Windows에서 확인) |
+
+- 자동 테스트 **329개 추가**(전체 853개, 33개 파일): 쿼리(rounds 22, words 18), 서비스 59, **다중 라운드 시나리오 16**, 호스트 검사 63, 미들웨어 20, HTTP API 70, 컨텍스트 7, 옵션 20, 잠금·브라우저·네트워크 14, 수명주기 11, **프로세스 9**.
+- **프로세스 테스트**는 번들한 서버를 자식 프로세스로 띄워 **실제 `SIGTERM`/`SIGINT`**(종료 코드 0·세션 종료 기록·잠금 삭제), **`SIGKILL` 후 재기동 복구**, **포트 충돌**, 잘못된 옵션을 검증한다(Windows는 시그널을 보낼 수 없어 건너뜀).
+- **결함 주입 검증 26가지 중 25가지가 즉시 검출**됐다(Host·Content-Type 검사 제거, 본문 한도, 172.16/12 범위, 점 있는 이름 허용, 오류 세부 노출, 제출이 트랜잭션 밖, 완료 제한 제거, **D38 제거**, 재시험 조건, 열린 라운드·순서 검사, 다른 세션의 라운드, 세션 종료·복구, 파일 소실 감지, 종료 시 세션·잠금, `--local-only`, `EADDRINUSE`, 경고 반복, `SIGTERM` 핸들러). 매번 주입이 실제로 적용됐는지(파일 변경)를 확인하고 원본으로 복원했다.
+- **개발 중 발견한 문제**
+  1. **설계 결함(D38)**: 라운드 번호가 Start를 눌러야만 올라가서, 모든 단어가 N+2·N+3으로 밀리면 pool이 비어 시작할 수 없고 번호도 올라가지 않아 **영원히 교착**한다(작은 DB는 첫 라운드를 전부 Perfect로 끝내면 즉시, 큰 DB는 마무리 단계에서). 빈 라운드 번호를 건너뛰도록 4.3을 고쳤다.
+  2. **시그널 핸들러 경합**: 핸들러를 서버 시작 뒤에 등록하면 "running" 직후의 SIGTERM이 기본 동작으로 처리된다(종료 코드 `null`). 프로세스 테스트가 잡았고 등록을 시작 전으로 옮겼다.
+  3. `DB_TOO_NEW`는 목록 스캔에서 먼저 걸러져 `POST /session`으로는 사실상 나오지 않는다(위 5.1 참고). 느슨했던 테스트(404·409 아무거나 허용)를 정확한 동작으로 고쳤다.
+  4. 테스트 작성 중 제 기대값 산수 실수 2건(구현은 옳았음)과, 아무것도 검증하지 않던 테스트 1건(`toBeDefined`를 호출하지 않음)을 바로잡았다.
+- **관찰**: 이 서버는 정적 파일이 아직 없어 루트가 안내 텍스트를 돌려준다(M5에서 클라이언트가 채운다). Windows의 콘솔 창 닫기(`SIGHUP`)·Ctrl+C는 자동 검증할 수 없어 M9 수동 체크리스트에 남는다.
 
 ---
 
