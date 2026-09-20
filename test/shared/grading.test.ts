@@ -160,7 +160,15 @@ describe('grade: examples from TECH-SPEC 4.1', () => {
     expect(grade([['stier']], '?!. , ,').verdict).toBe('wrong');
   });
 
-  it('documents that "wohin? wo?" is a single synonym (row 132)', () => {
+  it('row 132: "wohin?, wo?" gives two synonyms, so either word is enough', () => {
+    const quo = [['wohin?', 'wo?']];
+    expect(grade(quo, 'wohin').verdict).toBe('perfect');
+    expect(grade(quo, 'wo').verdict).toBe('perfect');
+    expect(grade(quo, 'wohin, wo').verdict).toBe('perfect');
+    expect(grade(quo, 'wohin wo').verdict).toBe('wrong');
+  });
+
+  it('a space between two words is part of one meaning, not a separator (the list used to have "wohin? wo?")', () => {
     const quo = [['wohin? wo?']];
     expect(grade(quo, 'wohin wo').verdict).toBe('perfect');
     expect(grade(quo, 'wohin? wo?').verdict).toBe('perfect');

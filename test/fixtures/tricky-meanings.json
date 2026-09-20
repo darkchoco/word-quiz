@@ -14,7 +14,7 @@
   { "row": 93, "headword": "sacerdōs, sacerdōtis m/f", "cells": ["Priester(in)"], "groups": [["Priester(in)"]] },
   { "row": 106, "headword": "vulnus, vulneris n", "cells": ["Wunde, (milit.) Verlust"], "groups": [["Wunde", "(milit.) Verlust"]] },
   { "row": 113, "headword": "tempus, temporis n", "cells": ["(günstige) Zeit, Umstände"], "groups": [["(günstige) Zeit", "Umstände"]] },
-  { "row": 132, "headword": "quō?", "cells": ["wohin? wo?"], "groups": [["wohin? wo?"]] },
+  { "row": 132, "headword": "quō?", "cells": ["wohin?, wo?"], "groups": [["wohin?", "wo?"]] },
   { "row": 138, "headword": "littera", "cells": ["Buchstabe", "Pl. Brief", "Literatur, Wissenschaft"], "groups": [["Buchstabe"], ["Pl. Brief"], ["Literatur", "Wissenschaft"]] },
   { "row": 162, "headword": "tēlum", "cells": ["(Angriffs-)Waffe, Geschoss"], "groups": [["(Angriffs-)Waffe", "Geschoss"]] },
   { "row": 169, "headword": "equidem", "cells": ["(ich) allerdings, freilich"], "groups": [["(ich) allerdings", "freilich"]] }
