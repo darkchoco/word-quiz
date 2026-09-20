@@ -63,7 +63,7 @@
 
 ## 5. 다음 세션 시작 시 할 일
 1. `git log --oneline`과 `git status`로 M2 커밋 여부를 확인한다. 미커밋이면 사용자에게 커밋 메시지를 먼저 보여주고 진행한다
-2. **사용자에게 확인할 것(아직 답 못 받음)**: 실제 단어장의 `quō?` 행 뜻이 `wohin? wo?`(쉼표 없음)라 동의어 하나로 처리된다. 두 단어를 각각 동의어로 의도했다면 Excel을 `wohin?, wo?`로 고쳐야 한다 (TECH-SPEC 4.1)
+2. **해결됨**: `quō?` 행 뜻은 `wohin?, wo?`가 맞다고 사용자가 확인. 샘플 `data/latin_wortschatz.xlsx`(untracked)의 B132를 직접 고쳤고(전후 비교로 다른 셀 무변경 확인, 압축 무결성 OK), 사용자 본인의 PRD용 파일은 사용자가 직접 수정. 픽스처 132행도 반영. (M3 종단 검증은 수정된 샘플로 진행)
 3. **M3(Import CLI)** 를 plan mode로 시작한다: `src/cli/{xlsx,validate,plan,report,index}.ts`, `apply`(백업 + 한 트랜잭션), `release/import.bat`, `write-excel-file` 개발 의존성 추가(테스트 픽스처 생성용, 버전 정확히 고정). 완료 기준·종단 검증은 EXECUTION-PLAN M3, 규칙은 TECH-SPEC 6장. **M2에서 재사용**: `createDatabase`(대소문자 무시 이름 거부 포함), `openDatabase({readOnly})`, `dbNameExists`, `insertWord`(표제어 trim+NFC 저장), `transaction`/`savepoint`, `AppError`. **아직 없는 것**: `updateWord`(merge의 뜻·노트 갱신). CLI는 `recoverSessions`를 켜지 말 것. 마일스톤 절차는 plan mode → 구현 → `npm run typecheck` → 단일 테스트 → 결함 주입으로 테스트 검증 → 커밋 메시지 사전 확인 → 커밋
 4. **Windows 자동 검증 시 주의**: WSL의 `curl`은 Windows `localhost`에 닿지 않으므로 `curl.exe`를 쓴다. `Stop-Process -Force`는 시그널 핸들러를 실행하지 않아 `SIGTERM` 정상 종료는 자동 검증 불가(대신 강제 종료 후 재기동 시 `last_seen_at` 보정을 검증). 테스트로 띄운 `node.exe`는 `CommandLine`으로 **자기가 띄운 것만** 종료할 것. `cmd.exe`는 UNC 경로에서 실행 불가라 `/mnt/c/...`에서 실행. 이 PC는 Node 24.14라 최소 버전 22.13은 검증 불가
 5. 알아둘 것: xlsx 라이브러리 `read-excel-file`은 9.3.10으로 스파이크했음. 버전 고정할 것. 스파이크 코드는 스크래치패드에만 있어 사라졌음(TECH-SPEC 14장에 결과만 있음)
