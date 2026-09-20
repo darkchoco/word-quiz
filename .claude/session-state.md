@@ -2,73 +2,73 @@
 
 ## 1. 날짜 / 주제
 - 저장일: 2026-09-20 (작업 진행: 2026-09-18 ~ 09-20)
-- 주제: PRD v1.0 확정 완료 → UI 목업 작성/게시 → **사용자 컨펌 대기 중**
+- 주제: PRD v1.2 · UI 목업(영어 UI) · 기술 스펙 v1.0 · **실행 계획 v1.0(리뷰 대기) 커밋 완료** → 다음은 **사용자 리뷰 후 M0(프로젝트 골격 + Windows 스모크) 시작**
 
 ## 2. 완료한 작업
-- [x] `docs/PRD.md` v0.2 → v0.3 → **v1.0(확정)**. 미결 O1~O8 전부 해소, 8.2는 "없음"
-- [x] 사용자 답변 전부 본문/결정 로그(D1~D32)에 반영. 사용자가 PRD 하단에 붙여넣은 답변 영역은 삭제함
-- [x] `data/latin_wortschatz.xlsx` 구조 분석 (178행, 열: 단어 / 뜻1~4 / 노트, 뜻은 독일어)
-- [x] UI 목업 작성 및 Artifact 게시: https://claude.ai/artifact/Gqn1G2DA4wXmBB4dsMrf6E (비공개)
-  - 원본 파일: `/tmp/claude-1000/-home-ikhoon-lab-word-quiz/4aed0b62-8a17-4efa-b445-b6bcee9f5c86/scratchpad/word-quiz-mockup.html` (**임시 경로, 프로젝트에 미저장**)
-  - 실제 채점 동작 데모 포함(뜻 묶음, 독일어 정규화, 괄호 생략, 3회 연속 확인창), PC/모바일 전환
-- [ ] **UI 목업 사용자 컨펌 (아직 — 구현 전 필수)**
-- [ ] 컨펌 후: PRD 5장 와이어프레임을 목업 기준으로 갱신, 목업 HTML을 `docs/`에 저장
-- [ ] 기술 스펙 문서 → 실행 계획 문서
-- [ ] 커밋 (한 번도 커밋하지 않음. `docs/`, `prompts/`, `.claude/`, `data/`는 untracked)
+- [x] `docs/PRD.md` v1.2 확정 (결정 로그 D1~D36, 미결 사항 없음)
+- [x] UI 목업 컨펌 완료. 로컬 파일 `docs/word-quiz-mockup.html`(앱 UI 영어, 컨트롤·설명 패널만 한국어)로 저장. Artifact 링크는 사용자가 못 열어서 로컬 파일이 기준
+- [x] PRD 5장 와이어프레임을 목업 기준 영어 UI로 갱신, D33(UI 영어)·D34(목업 컨펌 사항) 추가
+- [x] `docs/TECH-SPEC.md` v1.0 작성 (한글, 14개 장, 결정 T1~T12, DDL, API, CLI, 보안, 테스트, 스파이크 결과)
+- [x] 스파이크 3종 검증 (WSL Node 24.14): 채점 178단어 194묶음 실패 0건 / `node:sqlite` 동작 / esbuild 번들 216KB가 `node_modules` 없이 실행
+- [x] 문서 커밋 완료 (`git log --oneline`으로 확인): handoff, PRD v1.0~v1.2, 목업(한국어 → 영어 UI), 기술 스펙, 실행 계획
+- [x] 메모리 저장: `feedback_docs_in_korean`, `project_word_quiz_workflow`
+- [x] **실행 계획 문서** `docs/EXECUTION-PLAN.md` v1.0 작성·커밋 (M0~M9, 요구사항 추적표, Windows 검증 계획). 사용자 리뷰는 아직
+- [x] Windows 검증 환경 확인: WSL에서 `/mnt/d/tools/nodejs/node.exe`(v24.14.0) 실행 가능, win32 `node:sqlite` 동작
+- [ ] `data/`는 untracked (의도적, 정책은 사용자 결정 대기)
+- [ ] 구현은 시작하지 않음. 저장소에 코드가 아직 없음
 
-## 3. 결정과 이유 (상세는 PRD 8.1 D1~D32)
+## 3. 결정과 이유 (상세는 PRD 8.1 D1~D36, TECH-SPEC 1장 T1~T12)
 | 결정 | 이유 |
 |------|------|
-| 입력 소스는 Excel import만. 사진/OCR 전부 삭제 | 사용자: "사진 작업은 잊어버려" |
-| 언어별 별도 SQLite 파일, 한 언어에 여러 DB 가능, 라운드 번호 등 상태는 DB별 | 사용자 확정 (Latin/English는 성격이 다르고, Latin 파일이 여러 개일 수 있음) |
-| 시작 화면: 언어 선택 → DB 콤보박스. DB 없으면 "해당 DB가 없습니다." Alert 후 시작 화면 복귀 | 사용자 확정 |
-| 진행 중 DB 전환 = 세션 종료 후 새 세션 | 사용자 제안 |
-| English는 이번 범위 밖, 시작 화면에 "준비 중"(선택 불가) | 샘플 없음, 추후 업그레이드 |
-| Latin은 단어→뜻만. 뜻→단어/Mix 라디오 비활성 | 사용자 요구 |
-| 뜻 묶음 = 뜻 열(뜻1~4) 하나. 묶음 안 쉼표 항목은 동의어(하나만 맞으면 충족). 묶음 단위로 Perfect/부분/오답 판정 | 사용자가 옵션 B 선택 |
-| 채점 구분자는 쉼표만, 공백은 뜻의 일부(`sich setzen`) | 사용자 확정 |
-| 정규화: 대소문자 무시, ä=ae ö=oe ü=ue ß=ss, 정답의 괄호 안 내용 생략 허용 | 사용자 확정 |
-| 표제어는 셀 전체를 그대로 저장·표시. 노트는 저장만, 퀴즈 미사용 | 사용자 확정 |
-| Import CLI: 기본 검증 모드(DB 미변경, 리포트를 stdout+파일로) → 리뷰 후 Excel 수정 → `--apply`로 반영. 기존 DB merge 또는 새 DB 생성 선택 | 사용자 확정 |
-| merge 중복: 표제어 같으면 뜻·노트만 갱신, 진행 상태 보존, 사라진 단어는 삭제 안 하고 리포트만 (D31) | 사용자가 "잠정안대로" |
-| 정답 묶음에 없는 입력 항목은 감점 없음 (D32) | 사용자가 "잠정안대로" |
-| Perfect 2회째 N+3, 오답 마크는 완료 시 해제, 완료 단어는 오답 목록 제외 등 O1~O6 | 사용자가 "잠정안대로" |
-| import CLI도 같은 디렉터리, 의존성 압축 파일에 포함 | 사용자 확정 |
+| 앱 UI 텍스트는 영어, 데이터(단어·뜻)는 원본 그대로 (D33) | 사용자 "사용언어는 영어". UI 언어를 뜻하는 것이었음 |
+| **문서 본문은 한글**, 식별자·코드·API 경로만 영어 | 영어 계획서를 제출했다가 반려됨 |
+| Windows Node 22.13 이상 → `node:sqlite` 사용 (T1) | 사용자 확인. 네이티브 모듈 없이 WSL 개발본이 그대로 Windows에서 동작 |
+| 서버·CLI를 esbuild 단일 `.mjs`로 번들, `node_modules` 미배포 (T2) | PRD의 "한두 개 파일 압축" 요구 충족 |
+| 채점은 서버, 규칙 코드는 `src/shared` (T4) | 채점·출제 규칙 반영을 한 트랜잭션으로 묶기 위해 |
+| Perfect 3회 이상은 "No" 결과(N+3)를 제출 시 즉시 적용, "Yes"는 완료 표시 호출 (T7) | 서버가 확인창 상태를 기억할 필요 없음 |
+| 뜻 구분자는 **괄호 밖 쉼표만** (D35) | 실제 데이터에 `der (die, das) zweite` 등 괄호 안 쉼표가 있음. 사용자 승인 |
+| 채점 시 `? ! .` 무시 (D36) | `wie viel(e)?` 같은 뜻. 사용자 승인 |
+| 정답 변형에 **괄호 원형**을 포함 (T10) | 화면 표기 그대로 입력해도 정답이어야 함 (스파이크에서 발견) |
+| merge 전 `--apply` 시 DB 자동 백업 `data/backup/` (T12) | 앱에서 고친 뜻을 재 import가 덮어쓸 수 있음. 사용자 승인 |
+| 상태 바 정답 수는 Perfect만 집계, 목업 제안 3개 유지 (D34) | "그 외에는 모두 오케이" |
+| 서버 `0.0.0.0` 바인딩 + Content-Type/Host 검사, `--local-only` 옵션 (T·9장) | 모바일 접속 요구 + 무인증 LAN 위험 완화 |
+| 커밋은 주제별 분리, 메시지를 먼저 보여주고 확인 | 사용자 요청 + 프로젝트 규칙 |
 
 ## 4. 실패/포기한 접근법 (같은 실수 반복 금지)
-- **앱 내 자동 OCR / 사진 입력**: 완전 폐기. PRD에 다시 넣지 말 것.
-- **같은 라운드 내 틀린 단어 재출제, 라운드 완료 조건**: 사용자가 명시적으로 기각.
-- **세션 단위 출제 제외, 방향별 진행 상태 분리**: 기각. 진행 상태는 단어 하나에 통합, 제외는 라운드 단위.
-- **뜻1~4 열을 "각각 개별 뜻"으로 해석**: 내 오해였음. 실제로 한 셀에 쉼표로 동의어가 여러 개 있음(`fassen, nehmen`). 열 = 묶음, 쉼표 = 동의어.
-- **스페이스+쉼표 이중 구분자**: `sich setzen` 때문에 폐기. 쉼표만.
-- **사용자가 PRD 파일 안에 리뷰 답변을 인라인으로 붙이는 방식**: 사용자가 이렇게 답변함. 반영 후 지워달라고 요청받았음. 내 리뷰/질문은 채팅으로 주고, PRD에는 확정 내용만 유지.
-- **파이썬 미설치**: WSL에 `python3` 없음. xlsx 분석은 `unzip` + `sed`로 함. (스크립트가 필요하면 node 사용)
-- 주의: 목업의 "정답" 카운트는 **Perfect만 집계**로 가정한 것이며 PRD에 명시되지 않음. 컨펌 시 확인 필요.
+- **채점 변형에 원형 누락**: 처음엔 괄호를 제거한 형태만 허용해서, 화면에 보이는 정답(`(zusammen)werfen`)을 그대로 입력하면 오답이 되었음(1차 스파이크 38건 실패). 반드시 원형·괄호제거·괄호문자만제거 3가지 모두 허용. 채점 구현 시 실제 데이터로 회귀 테스트할 것
+- **쉼표 단순 분리**: 괄호 안 쉼표를 깨뜨림. `splitTop`(괄호 깊이 0에서만 분리) 사용
+- **esbuild ESM 번들을 그냥 실행**: `Dynamic require of "fs" is not supported` 오류. `createRequire` 배너 필수
+- **`start.bat`에서 브라우저를 먼저 여는 방식**: 서버 준비 전 접속하는 경합. 서버가 `listen` 성공 후 여는 방식으로 결정
+- **WAL 모드**: 부속 파일(-wal, -shm) 때문에 `.db` 복사 백업이 불완전해져서 채택하지 않음
+- **영어로 계획서 작성**: 사용자가 반려. 문서는 한글로
+- **Artifact 링크로 목업 공유**: 비공개 링크라 사용자가 열지 못함. 로컬 HTML 파일로 해결
+- **앱 내 OCR/사진 입력, 같은 라운드 내 재출제, 세션 단위 출제 제외, 방향별 진행 상태 분리, 뜻1~4를 개별 뜻으로 해석, 스페이스+쉼표 이중 구분자**: 이전 세션에서 기각됨. PRD에 다시 넣지 말 것
+- **사용자가 PRD 파일 안에 답변을 인라인으로 붙이는 방식**: 반영 후 삭제해 달라고 요청받았음. 리뷰·질문은 채팅으로, PRD에는 확정 내용만
+- **Windows에서 `SIGTERM` 종료를 자동 검증하는 계획**: Windows는 강제 종료만 가능해 핸들러가 안 돌아서 폐기. 강제 종료 후 복구 검증으로 대체
+- **WSL `curl`로 Windows 서버 접속**: `localhost`로는 안 됨. `curl.exe` 사용
+- **WSL에 `python3` 없음**: xlsx 분석은 `unzip` + node로 함
+- **`data/latin_wortschatz.xlsx`가 한 번 사라졌었음**(원인 불명, 사용자가 다시 복사). 구현·테스트가 이 파일에 의존하면 안 됨. 테스트 픽스처는 저장소 안에 별도로 둘 것 (TECH-SPEC 10장)
 
 ## 5. 다음 세션 시작 시 할 일
-1. 사용자의 **UI 목업 컨펌/수정 요청** 확인 (Artifact 링크는 위 참조). 수정 요청이 있으면 스크래치패드 파일이 없을 수 있으니 `Artifact read`로 게시본을 읽어 재작성 후 같은 URL로 재게시
-2. 컨펌 시 확인할 3가지: ① 정답 수 집계 = Perfect만? ② PRD에 없는 제안 3개(라운드 번호/출제 가능 수 표시, 단어 관리 검색창, ✓/✗ 기호) 유지 여부 ③ 화면별 수정 사항
-3. 컨펌되면 PRD 5장 와이어프레임 갱신 + 목업 HTML을 `docs/`에 저장 (로컬 파일은 `<meta charset="utf-8">` 포함한 완전한 HTML로 감쌀 것)
-4. **기술 스펙 문서** 작성 (plan mode로 시작). 반드시 다룰 항목:
-   - DB 라이브러리: WSL 개발/Windows 실행이라 `better-sqlite3` 같은 네이티브 모듈 배포 불가 → `node:sqlite` / `sql.js` / Windows용 별도 빌드 중 선택
-   - 스키마(단어, 뜻 묶음, 진행 상태, 세션, 라운드, 테스트 결과, 설정), 정규화·괄호 처리 구현
-   - Import CLI 세부: 헤더 행, 빈 뜻 열, 파일 경로 인자, 리포트 형식, `--apply`/새 DB/merge 옵션
-   - UTF-8(`chcp 65001`), 장음 기호, DB 파일 위치, 콘솔 종료 시 종료 시각 기록
-5. 이후 **실행 계획 문서**
-6. 커밋이 필요하면 프로젝트 규칙 준수 (아래)
+1. `docs/EXECUTION-PLAN.md`를 읽고 사용자 리뷰 결과를 확인한다. 수정 요청이 있으면 반영 후 커밋(문서는 **한글**)
+2. 리뷰가 끝나면 **M0**부터 구현한다. 마일스톤마다 plan mode → 구현 → `npm run typecheck` → 단일 테스트 → 커밋 메시지 사전 확인 → 커밋 순서(EXECUTION-PLAN 1장). 시작 전 사용자에게 `data/` 정책과 `C:\WordQuiz-dev` 사용을 확인한다. **구현 시작 시 UI는 이미 컨펌됨**(목업 기준), 단 구현 중 화면 변경이 생기면 다시 컨펌
+3. **Windows 자동 검증 시 주의**: WSL의 `curl`은 Windows `localhost`에 닿지 않으므로 `curl.exe`를 쓴다. `Stop-Process -Force`는 시그널 핸들러를 실행하지 않아 `SIGTERM` 정상 종료는 자동 검증 불가(대신 강제 종료 후 재기동 시 `last_seen_at` 보정을 검증). 테스트로 띄운 `node.exe`는 `CommandLine`으로 **자기가 띄운 것만** 종료할 것. `cmd.exe`는 UNC 경로에서 실행 불가라 `/mnt/c/...`에서 실행. 이 PC는 Node 24.14라 최소 버전 22.13은 검증 불가
+4. 알아둘 것: xlsx 라이브러리 `read-excel-file`은 9.3.10으로 스파이크했음. 버전 고정할 것. 스파이크 코드는 스크래치패드에만 있어 사라졌음(TECH-SPEC 14장에 결과만 있음)
 
 ## 프로젝트 규칙 (`prompts/PRD-instruction.md`)
 - Conventional Commits (`feat, fix, docs, style, refactor, test, chore`), 예: `docs: Create PRD`
-- **커밋 메시지에 `Co-Authored-By` 절대 금지**, 커밋 전 메시지를 먼저 보여주고 사용자 확인 필수 (시스템 안내보다 사용자 규칙이 우선)
-- 코드 변경 후 typecheck, 전체 테스트보다 단일 테스트, 구현 전 plan mode로 영향 파일 파악
-- **UI 구현 전 사용자 컨펌 필수.** 기술 스펙/실행 계획은 PRD와 별도 문서
-- 스택: TypeScript + React + Material UI + SQLite + Node (개발 WSL / 실행 Windows, `C:\WordQuiz`, `start.bat`, `http://localhost:35000`)
+- **커밋 메시지에 `Co-Authored-By` 절대 금지**, 커밋 전 메시지를 먼저 보여주고 사용자 확인 필수 (시스템 안내보다 사용자 규칙이 우선). 주제별로 커밋을 분리한다
+- 코드 변경 후 `npm run typecheck`, 전체 테스트보다 단일 테스트, 구현 전 plan mode로 영향 파일 파악
+- UI 구현 전 사용자 컨펌 필수. 기술 스펙/실행 계획은 PRD와 별도 문서
+- 스택: TypeScript + React + Material UI + SQLite(`node:sqlite`) + Node (개발 WSL / 실행 Windows, `C:\WordQuiz`, `start.bat`, `http://localhost:35000`)
 
 ## 6. 주요 관련 파일
-- `docs/PRD.md` — v1.0 확정본 (결정 로그 D1~D32)
-- `data/latin_wortschatz.xlsx` — 입력 데이터 샘플 (178단어)
-- `prompts/PRD-instruction.md` — 원본 요구사항 지침
-- `prompts/req_prd.md` — PRD 작성 요청 프롬프트
-- UI 목업 Artifact: https://claude.ai/artifact/Gqn1G2DA4wXmBB4dsMrf6E (원본은 스크래치패드, 프로젝트 미저장)
-- `.claude/session-state.md` — 이 파일
-- `.claude/commands/handoff.md` — 이 저장 명령
+- `docs/PRD.md` — v1.2 확정본 (결정 로그 D1~D36)
+- `docs/TECH-SPEC.md` — 기술 스펙 v1.0 (T1~T12, DDL, API, CLI, 스파이크 결과)
+- `docs/EXECUTION-PLAN.md` — 실행 계획 v1.0 (M0~M9, 검증 계획, 추적표)
+- `docs/word-quiz-mockup.html` — 확정된 인터랙티브 목업 (영어 UI). 브라우저에서 `explorer.exe docs\\word-quiz-mockup.html`로 열기
+- `data/latin_wortschatz.xlsx` — 입력 데이터 샘플 (178단어, untracked)
+- `prompts/PRD-instruction.md`, `prompts/req_prd.md` — 원본 요구사항 지침
+- `.claude/session-state.md` — 이 파일 / `.claude/commands/handoff.md` — 이 저장 명령
+- 메모리: `/home/ikhoon/.claude/projects/-home-ikhoon-lab-word-quiz/memory/` (`feedback_docs_in_korean`, `project_word_quiz_workflow`)
+- (참고) Artifact 링크 https://claude.ai/artifact/Gqn1G2DA4wXmBB4dsMrf6E — 옛 한국어 UI 버전, 사용자가 열지 못함. 기준 아님
