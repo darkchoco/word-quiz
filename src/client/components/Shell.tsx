@@ -3,6 +3,7 @@ import { Box } from '@mui/material';
 import { useApp } from '../app-context';
 import { useHashRoute } from '../hooks/useHashRoute';
 import { Placeholder } from './Placeholder';
+import { QuizPage } from './QuizPage';
 import { StatusBar } from './StatusBar';
 import { SwitchDbDialog } from './SwitchDbDialog';
 import { TabsBar } from './TabsBar';
@@ -29,8 +30,10 @@ export function Shell() {
     <Box sx={{ minHeight: '100dvh', display: 'flex', flexDirection: 'column' }}>
       <TopBar language={session.language} db={session.db} onSwitchDb={() => setConfirming(true)} />
       <TabsBar active={tab} onChange={setTab} />
-      <Box component="main" sx={{ flex: 1, width: '100%', maxWidth: 960, mx: 'auto' }}>
-        <Placeholder tab={tab} />
+      <Box component="main" sx={{ flex: 1, bgcolor: 'background.paper' }}>
+        <Box sx={{ width: '100%', maxWidth: 960, mx: 'auto' }}>
+          {tab === 'quiz' ? <QuizPage /> : <Placeholder tab={tab} />}
+        </Box>
       </Box>
       <StatusBar stats={session.stats} />
       <SwitchDbDialog open={confirming} busy={busy} onCancel={() => setConfirming(false)} onSwitch={() => void confirmSwitch()} />
