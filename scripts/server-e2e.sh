@@ -47,7 +47,7 @@ scenario() {
   else
     dir=$WIN_DEV/server-e2e; dirw=$(wslpath -w "$dir"); port=35993
   fi
-  rm -rf "$dir"; mkdir -p "$dir" && cp "$DIST/server.mjs" "$DIST/import.mjs" "$dir/" || { fail "cannot prepare $dir"; return; }
+  rm -rf "$dir"; mkdir -p "$dir" && cp "$DIST/server.mjs" "$DIST/import.mjs" "$dir/" && cp -r "$DIST/public" "$dir/public" || { fail "cannot prepare $dir"; return; }
   cp "$SAMPLE" "$dir/words.xlsx"
 
   local NODE_RUN CURL
@@ -113,7 +113,10 @@ scenario() {
   echo "-- $mode: 3. protection"
   expect "another host name is refused (403)" "\"\${CURL[@]}\" -w '%{http_code}' -H 'Host: evil.example.com' http://localhost:$port/api/session | grep -q '403\$'"
   expect "a write that is not JSON is refused (415)" "\"\${CURL[@]}\" -w '%{http_code}' -X POST -H 'Content-Type: text/plain' -d '{}' http://localhost:$port/api/rounds | grep -q '415\$'"
-  expect "the web app page says the files are missing (no client yet)" "\"\${CURL[@]}\" http://localhost:$port/ | grep -q 'Word Quiz is running'"
+  expect "the web app page is served at /" "\"\${CURL[@]}\" http://localhost:$port/ | grep -q '<div id=\"root\">'"
+  ASSET=$("${CURL[@]}" http://localhost:$port/ | grep -o '/assets/[^"]*\.js' | head -1)
+  expect "the script of the page is served ($ASSET)" "[ \"\$(\"\${CURL[@]}\" -o /dev/null -w '%{http_code}' http://localhost:$port${ASSET})\" = 200 ]"
+  expect "the development gallery is not in the served script" "! \"\${CURL[@]}\" http://localhost:$port${ASSET} | grep -q 'Page content'"
 
   echo "-- $mode: 4. a second server on the same port"
   if [ "$mode" = linux ]; then
