@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="ko">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
@@ -184,13 +184,13 @@ td input[type=text]{width:100%;font-size:14.5px;padding:5px 8px}
     <div class="app">
       <div class="topbar" id="topbar" hidden>
         <span class="brand">Word Quiz</span>
-        <span class="dbpill"><span><span class="lang">Latin</span> ▸ <code id="dbname">latin.db</code></span><button type="button" id="dbswitch">DB 전환</button></span>
+        <span class="dbpill"><span><span class="lang">Latin</span> ▸ <code id="dbname">latin.db</code></span><button type="button" id="dbswitch">Switch DB</button></span>
       </div>
-      <nav class="tabs" id="tabs" aria-label="메뉴" hidden>
-        <button class="tab" data-tab="quiz">퀴즈</button>
-        <button class="tab" data-tab="wrong">오답</button>
-        <button class="tab" data-tab="words">단어관리</button>
-        <button class="tab" data-tab="settings">설정</button>
+      <nav class="tabs" id="tabs" aria-label="Menu" hidden>
+        <button class="tab" data-tab="quiz">Quiz</button>
+        <button class="tab" data-tab="wrong">Wrong</button>
+        <button class="tab" data-tab="words">Words</button>
+        <button class="tab" data-tab="settings">Settings</button>
       </nav>
 
       <main>
@@ -199,42 +199,42 @@ td input[type=text]{width:100%;font-size:14.5px;padding:5px 8px}
           <div class="startcard">
             <h1>Word Quiz</h1>
             <div class="field">
-              <span class="legend">언어</span>
+              <span class="legend">Language</span>
               <div class="radios">
                 <label><input type="radio" name="lang" checked> Latin</label>
-                <label class="off"><input type="radio" name="lang" disabled> English <span class="badge">준비 중</span></label>
+                <label class="off"><input type="radio" name="lang" disabled> English <span class="badge">Coming soon</span></label>
               </div>
             </div>
             <div class="field">
-              <label for="dbsel">DB</label>
+              <label for="dbsel">Database</label>
               <select id="dbsel"><option>latin.db</option><option>latin_2.db</option></select>
             </div>
-            <button class="btn primary lg" id="go" type="button">시작</button>
+            <button class="btn primary lg" id="go" type="button">Start</button>
           </div>
         </section>
 
         <!-- 라운드 시작 전 -->
         <section class="screen" data-screen="idle" hidden>
-          <div id="retest-banner" class="fb" hidden><b>오답 재시험</b><span class="sub">오답 마크된 단어만으로 라운드를 구성합니다. 출제 제외 규칙은 동일하게 적용됩니다.</span></div>
+          <div id="retest-banner" class="fb" hidden><b>Retest wrong words</b><span class="sub">The round is built only from words marked wrong. The usual exclusion rules still apply.</span></div>
           <div class="field">
-            <span class="legend">출제 방향</span>
+            <span class="legend">Direction</span>
             <div class="radios">
-              <label><input type="radio" name="dir" checked> 단어→뜻</label>
-              <label class="off"><input type="radio" name="dir" disabled> 뜻→단어</label>
+              <label><input type="radio" name="dir" checked> Word → Meaning</label>
+              <label class="off"><input type="radio" name="dir" disabled> Meaning → Word</label>
               <label class="off"><input type="radio" name="dir" disabled> Mix</label>
             </div>
-            <span class="hint">Latin은 단어→뜻만 지원합니다.</span>
+            <span class="hint">Latin supports Word → Meaning only.</span>
           </div>
-          <p class="sub" style="margin:0">라운드 <b style="color:var(--ink)" class="count">12</b> · 출제 가능한 단어 <b style="color:var(--ink)" class="count">143</b>개 · 라운드당 <b style="color:var(--ink)" class="count">20</b>문제</p>
+          <p class="sub" style="margin:0">Round <b style="color:var(--ink)" class="count">12</b> · <b style="color:var(--ink)" class="count">143</b> words available · <b style="color:var(--ink)" class="count">20</b> questions per round</p>
           <div><button class="btn primary lg" id="start-round" type="button">Start</button></div>
         </section>
 
         <!-- 퀴즈 진행 -->
         <section class="screen" data-screen="quiz" hidden>
-          <div class="progress"><span class="dir">단어→뜻</span><span class="bar"><i id="pbar" style="width:0"></i></span><span class="count" id="pcount">1 / 5</span></div>
+          <div class="progress"><span class="dir">Word → Meaning</span><span class="bar"><i id="pbar" style="width:0"></i></span><span class="count" id="pcount">1 / 5</span></div>
           <div class="headword" id="headword" lang="la"></div>
           <form class="qform" id="qform" autocomplete="off">
-            <input type="text" id="answer" aria-label="뜻 입력" placeholder="뜻을 입력하세요 (쉼표로 구분)" spellcheck="false">
+            <input type="text" id="answer" aria-label="Meaning" placeholder="Enter the meaning (separate with commas)" spellcheck="false">
             <button class="btn primary" id="submit" type="submit">Submit</button>
           </form>
           <div class="fb" id="fb" hidden aria-live="polite">
@@ -242,8 +242,8 @@ td input[type=text]{width:100%;font-size:14.5px;padding:5px 8px}
             <div class="ansline" id="ansline"></div>
             <span class="legend-note" id="fbnote"></span>
             <div class="actions">
-              <button class="btn" id="donebtn" type="button">완료 표시</button>
-              <button class="btn primary right" id="nextbtn" type="button">다음 문제 <kbd>Enter</kbd></button>
+              <button class="btn" id="donebtn" type="button">Mark done</button>
+              <button class="btn primary right" id="nextbtn" type="button">Next <kbd>Enter</kbd></button>
             </div>
           </div>
         </section>
@@ -251,69 +251,69 @@ td input[type=text]{width:100%;font-size:14.5px;padding:5px 8px}
         <!-- 라운드 결과 -->
         <section class="screen center" data-screen="result" hidden>
           <div class="result">
-            <h2 class="title">라운드 종료</h2>
+            <h2 class="title">Round complete</h2>
             <div class="bigpct" id="rpct">80%</div>
-            <div id="rtext">5문제 중 4개 정답</div>
-            <button class="btn primary lg" id="again" type="button">다시 시작</button>
+            <div id="rtext">4 of 5 correct</div>
+            <button class="btn primary lg" id="again" type="button">Play again</button>
           </div>
         </section>
 
         <!-- 오답 목록 -->
         <section class="screen" data-screen="wrong" hidden>
           <div class="rowbar">
-            <h2 class="title">틀린 단어 <span class="count" id="wrongcount">(6)</span></h2>
-            <button class="btn primary" id="retest" type="button">오답만 재시험</button>
+            <h2 class="title">Wrong words <span class="count" id="wrongcount">(6)</span></h2>
+            <button class="btn primary" id="retest" type="button">Retest wrong only</button>
           </div>
-          <div class="tablewrap"><table><thead><tr><th>단어</th><th>뜻</th></tr></thead><tbody id="wrongbody"></tbody></table></div>
-          <span class="hint">완료 처리된 단어는 이 목록에서 빠집니다.</span>
+          <div class="tablewrap"><table><thead><tr><th>Word</th><th>Meaning</th></tr></thead><tbody id="wrongbody"></tbody></table></div>
+          <span class="hint">Words marked done are removed from this list.</span>
         </section>
 
         <!-- 단어 관리 -->
         <section class="screen" data-screen="words" hidden>
           <div class="rowbar">
-            <h2 class="title">단어 관리 <span class="sub">(전체 178개 중 예시 9개)</span></h2>
-            <input type="text" id="wfilter" placeholder="단어 검색" aria-label="단어 검색">
+            <h2 class="title">Words <span class="sub">(9 samples of 178)</span></h2>
+            <input type="text" id="wfilter" placeholder="Search words" aria-label="Search words">
           </div>
-          <div class="tablewrap"><table><thead><tr><th>단어</th><th>뜻</th><th>완료</th><th></th></tr></thead><tbody id="wordsbody"></tbody></table></div>
-          <span class="hint">뜻 묶음은 <kbd>|</kbd>로, 묶음 안의 동의어는 쉼표로 구분해 수정합니다. 단어 추가/삭제는 import CLI에서만 가능합니다.</span>
+          <div class="tablewrap"><table><thead><tr><th>Word</th><th>Meaning</th><th>Done</th><th></th></tr></thead><tbody id="wordsbody"></tbody></table></div>
+          <span class="hint">Separate meaning groups with <kbd>|</kbd> and synonyms within a group with commas. Words can only be added or removed with the import CLI.</span>
         </section>
 
         <!-- 설정 -->
         <section class="screen" data-screen="settings" hidden>
-          <h2 class="title">설정</h2>
+          <h2 class="title">Settings</h2>
           <div class="field" style="max-width:260px">
-            <label for="rsize">라운드당 문제 수</label>
+            <label for="rsize">Questions per round</label>
             <input type="number" id="rsize" value="20" min="1" max="200">
           </div>
-          <div><button class="btn primary" id="savecfg" type="button">저장</button></div>
+          <div><button class="btn primary" id="savecfg" type="button">Save</button></div>
         </section>
       </main>
 
       <div class="status" id="status" hidden>
-        <span>전체 단어 <b>178</b>개</span>
-        <span>이번 세션 테스트 <b id="st-t">15</b> / 정답 <b id="st-c">11</b></span>
+        <span>Total words <b>178</b></span>
+        <span>Session tested <b id="st-t">15</b> / correct <b id="st-c">11</b></span>
       </div>
     </div>
 
     <!-- overlays -->
     <div class="overlay" id="ov-nodb" hidden>
       <div class="dialog" role="alertdialog" aria-labelledby="t-nodb">
-        <h3 id="t-nodb">해당 DB가 없습니다.</h3>
-        <div class="actions"><button class="btn primary" data-close="nodb" type="button">확인</button></div>
+        <h3 id="t-nodb">The selected DB does not exist.</h3>
+        <div class="actions"><button class="btn primary" data-close="nodb" type="button">OK</button></div>
       </div>
     </div>
     <div class="overlay" id="ov-done3" hidden>
       <div class="dialog" role="dialog" aria-labelledby="t-done3">
-        <h3 id="t-done3"><span id="done3word" style="font-family:var(--f-word);font-size:19px"></span> 을(를) 3회 연속 맞췄어요</h3>
-        <p>해당 단어에 완료 표시를 할까요?</p>
+        <h3 id="t-done3"><span id="done3word" style="font-family:var(--f-word);font-size:19px"></span> answered correctly 3 times in a row</h3>
+        <p>Mark this word as done?</p>
         <div class="actions"><button class="btn" data-close="done3-no" type="button">No</button><button class="btn primary" data-close="done3-yes" type="button">Yes</button></div>
       </div>
     </div>
     <div class="overlay" id="ov-switch" hidden>
       <div class="dialog" role="dialog" aria-labelledby="t-switch">
-        <h3 id="t-switch">DB를 전환할까요?</h3>
-        <p>현재 세션이 종료되고 새 세션이 시작됩니다.</p>
-        <div class="actions"><button class="btn" data-close="switch-no" type="button">취소</button><button class="btn primary" data-close="switch-yes" type="button">전환</button></div>
+        <h3 id="t-switch">Switch DB?</h3>
+        <p>The current session will end and a new session will start.</p>
+        <div class="actions"><button class="btn" data-close="switch-no" type="button">Cancel</button><button class="btn primary" data-close="switch-yes" type="button">Switch</button></div>
       </div>
     </div>
     <div class="toast" id="toast" hidden></div>
@@ -416,23 +416,23 @@ td input[type=text]{width:100%;font-size:14.5px;padding:5px 8px}
   function submit(){
     if(st.answered)return;
     var w=st.cur,input=$('#answer').value;
-    if(!input.trim()){toast('뜻을 입력하세요');return}
+    if(!input.trim()){toast('Enter a meaning');return}
     var r=grade(w,input);st.answered=true;
     $('#answer').disabled=true;$('#submit').disabled=true;
     st.tested++;st.rt++;
     if(r.kind==='perfect'){st.correct++;st.rc++;w.streak++}else{w.streak=0;w.wrong=true}
     var v=$('#verdict');
     v.className='verdict v-'+r.kind;
-    v.textContent=r.kind==='perfect'?'Perfect':(r.kind==='partial'?'부분 정답 ('+r.n+'/'+w.g.length+')':'오답');
-    var line=$('#ansline');line.innerHTML='<span class="ans-label">정답</span>';
+    v.textContent=r.kind==='perfect'?'Perfect':(r.kind==='partial'?'Partial ('+r.n+'/'+w.g.length+')':'Wrong');
+    var line=$('#ansline');line.innerHTML='<span class="ans-label">Answer</span>';
     w.g.forEach(function(grp,k){
       var s=document.createElement('span');s.className='grp '+(r.hits[k]?'hit':'miss');
       var i=document.createElement('i');i.textContent=r.hits[k]?'✓':'✗';
       s.appendChild(i);s.appendChild(document.createTextNode(grp.join(', ')));line.appendChild(s);
     });
-    $('#fbnote').textContent=w.g.length>1?'각 색 블록이 뜻 묶음 하나입니다. 묶음 안에서는 하나만 맞아도 충족입니다.':'';
-    var d=$('#donebtn');d.disabled=(r.kind==='wrong')||w.done;d.textContent=w.done?'완료됨':'완료 표시';
-    d.title=r.kind==='wrong'?'오답일 때는 완료 표시를 할 수 없습니다':'';
+    $('#fbnote').textContent=w.g.length>1?'Each colored block is one meaning group. One synonym per group is enough.':'';
+    var d=$('#donebtn');d.disabled=(r.kind==='wrong')||w.done;d.textContent=w.done?'Done':'Mark done';
+    d.title=r.kind==='wrong'?'Cannot mark done after a wrong answer':'';
     $('#fb').hidden=false;$('#nextbtn').focus({preventScroll:true});
     $('#pbar').style.width=((st.i+1)/ROUND.length*100)+'%';
     updateStatus();
@@ -443,8 +443,8 @@ td input[type=text]{width:100%;font-size:14.5px;padding:5px 8px}
     if(st.i+1>=ROUND.length){go('result');finish(st.rc,st.rt||ROUND.length);return}
     st.i++;renderQ();
   }
-  function finish(c,t){$('#rpct').textContent=Math.round(c/t*100)+'%';$('#rtext').textContent=t+'문제 중 '+c+'개 정답'}
-  function complete(w){w.done=true;w.wrong=false;var d=$('#donebtn');d.disabled=true;d.textContent='완료됨';toast('완료 처리했습니다')}
+  function finish(c,t){$('#rpct').textContent=Math.round(c/t*100)+'%';$('#rtext').textContent=c+' of '+t+' correct'}
+  function complete(w){w.done=true;w.wrong=false;var d=$('#donebtn');d.disabled=true;d.textContent='Done';toast('Marked as done')}
 
   /* ---------- 오답 / 단어 관리 ---------- */
   function meaning(w){return w.g.map(function(g){return '<span class="g">'+esc(g.join(', '))+'</span>'}).join('')}
@@ -460,14 +460,14 @@ td input[type=text]{width:100%;font-size:14.5px;padding:5px 8px}
     $('#wordsbody').innerHTML=WORDS.map(function(w,i){
       if(q&&norm(w.h).indexOf(q)<0&&norm(w.g.join(' ')).indexOf(q)<0)return '';
       if(i===editing){
-        return '<tr><td class="w"><input type="text" id="e-w" value="'+esc(w.h)+'" aria-label="단어"></td>'+
-          '<td class="m"><input type="text" id="e-m" value="'+esc(w.g.map(function(g){return g.join(', ')}).join(' | '))+'" aria-label="뜻"></td>'+
-          '<td class="c"><input type="checkbox" '+(w.done?'checked':'')+' disabled aria-label="완료"></td>'+
-          '<td style="white-space:nowrap"><button class="btn" data-save="'+i+'" type="button">저장</button> <button class="btn" data-cancel="1" type="button">취소</button></td></tr>';
+        return '<tr><td class="w"><input type="text" id="e-w" value="'+esc(w.h)+'" aria-label="Word"></td>'+
+          '<td class="m"><input type="text" id="e-m" value="'+esc(w.g.map(function(g){return g.join(', ')}).join(' | '))+'" aria-label="Meaning"></td>'+
+          '<td class="c"><input type="checkbox" '+(w.done?'checked':'')+' disabled aria-label="Done"></td>'+
+          '<td style="white-space:nowrap"><button class="btn" data-save="'+i+'" type="button">Save</button> <button class="btn" data-cancel="1" type="button">Cancel</button></td></tr>';
       }
-      return '<tr><td class="w" lang="la">'+esc(w.h)+(w.wrong&&!w.done?'<span class="mark">오답</span>':'')+'</td><td class="m">'+meaning(w)+'</td>'+
-        '<td class="c"><input type="checkbox" data-done="'+i+'" '+(w.done?'checked':'')+' aria-label="완료"></td>'+
-        '<td><button class="btn" data-edit="'+i+'" type="button">수정</button></td></tr>';
+      return '<tr><td class="w" lang="la">'+esc(w.h)+(w.wrong&&!w.done?'<span class="mark">wrong</span>':'')+'</td><td class="m">'+meaning(w)+'</td>'+
+        '<td class="c"><input type="checkbox" data-done="'+i+'" '+(w.done?'checked':'')+' aria-label="Done"></td>'+
+        '<td><button class="btn" data-edit="'+i+'" type="button">Edit</button></td></tr>';
     }).join('');
   }
 
@@ -480,16 +480,16 @@ td input[type=text]{width:100%;font-size:14.5px;padding:5px 8px}
       if(k==='done3-yes'){hideAll();complete(st.cur)}
       if(k==='done3-no'){hideAll()}
       if(k==='switch-no'){hideAll()}
-      if(k==='switch-yes'){hideAll();st.tested=0;st.correct=0;go('start');toast('새 세션을 시작합니다')}
+      if(k==='switch-yes'){hideAll();st.tested=0;st.correct=0;go('start');toast('New session started')}
     }
     if(t.dataset.edit!==undefined){editing=+t.dataset.edit;renderWords();var f=$('#e-w');if(f)f.focus()}
     if(t.dataset.cancel){editing=-1;renderWords()}
     if(t.dataset.save!==undefined){
       var w=WORDS[+t.dataset.save],nw=$('#e-w').value.trim(),nm=$('#e-m').value.trim();
-      if(nw&&nm){w.h=nw;w.g=nm.split('|').map(function(x){return x.split(',').map(function(y){return y.trim()}).filter(Boolean)}).filter(function(g){return g.length});toast('저장했습니다')}
+      if(nw&&nm){w.h=nw;w.g=nm.split('|').map(function(x){return x.split(',').map(function(y){return y.trim()}).filter(Boolean)}).filter(function(g){return g.length});toast('Saved')}
       editing=-1;renderWords();
     }
-    if(t.dataset.done!==undefined){var w2=WORDS[+t.dataset.done];w2.done=t.checked;if(t.checked)w2.wrong=false;toast(t.checked?'완료 처리했습니다':'pool에 복귀했습니다');renderWords()}
+    if(t.dataset.done!==undefined){var w2=WORDS[+t.dataset.done];w2.done=t.checked;if(t.checked)w2.wrong=false;toast(t.checked?'Marked as done':'Returned to pool');renderWords()}
   });
   $$('.tab').forEach(function(b){b.addEventListener('click',function(){
     var k=b.getAttribute('data-tab');
@@ -504,7 +504,7 @@ td input[type=text]{width:100%;font-size:14.5px;padding:5px 8px}
   $('#nextbtn').addEventListener('click',next);
   $('#donebtn').addEventListener('click',function(){if(st.cur&&!$('#donebtn').disabled)complete(st.cur)});
   $('#wfilter').addEventListener('input',renderWords);
-  $('#savecfg').addEventListener('click',function(){toast('저장했습니다')});
+  $('#savecfg').addEventListener('click',function(){toast('Saved')});
   document.addEventListener('keydown',function(e){
     if(e.key==='Enter'&&st.screen==='quiz'&&st.answered&&$('#ov-done3').hidden&&e.target.tagName!=='BUTTON'){e.preventDefault();next()}
   });
