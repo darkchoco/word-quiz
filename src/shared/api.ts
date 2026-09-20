@@ -42,8 +42,13 @@ export interface SessionState {
 }
 
 export interface PoolInfo {
+  /** The number the next normal round will get (after skipping empty rounds, PRD D38). */
   nextRoundNumber: number;
+  /** Words that can be asked in that round. */
   available: number;
+  /** The number a retest would get, which can differ from `nextRoundNumber`. */
+  retestRoundNumber: number;
+  /** Wrong-marked words that can be asked in that retest. */
   wrongAvailable: number;
   questionsPerRound: number;
   allDone: boolean;
@@ -95,6 +100,7 @@ export const ERROR_STATUS = {
   INVALID_MEANINGS: 400,
   INVALID_SETTING: 400,
   FORBIDDEN_HOST: 403,
+  NOT_FOUND: 404,
   DB_NOT_FOUND: 404,
   NO_SESSION: 404,
   NO_ACTIVE_ROUND: 404,
@@ -107,6 +113,7 @@ export const ERROR_STATUS = {
   OUT_OF_ORDER: 409,
   HEADWORD_EXISTS: 409,
   MARK_DONE_NOT_ALLOWED: 409,
+  PAYLOAD_TOO_LARGE: 413,
   UNSUPPORTED_MEDIA_TYPE: 415,
   DIRECTION_UNSUPPORTED: 422,
   INTERNAL: 500,

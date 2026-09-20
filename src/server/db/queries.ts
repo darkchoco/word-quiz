@@ -178,7 +178,8 @@ export interface StoredWord {
   note: string | null;
 }
 
-function parseStoredMeanings(json: string, headword: string): string[][] {
+/** Parses the JSON column of a word and checks its shape (an array of arrays of strings). */
+export function parseStoredMeanings(json: string, headword: string): string[][] {
   let value: unknown;
   try {
     value = JSON.parse(json);

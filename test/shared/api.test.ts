@@ -34,6 +34,11 @@ describe('ERROR_STATUS', () => {
       WORD_NOT_FOUND: 404,
       MARK_DONE_NOT_ALLOWED: 409,
       INVALID_SETTING: 400,
+      NOT_FOUND: 404,
+      PAYLOAD_TOO_LARGE: 413,
+      UNSUPPORTED_MEDIA_TYPE: 415,
+      FORBIDDEN_HOST: 403,
+      INTERNAL: 500,
     };
     for (const [code, status] of Object.entries(expected)) {
       expect(ERROR_STATUS[code as ErrorCode], code).toBe(status);
