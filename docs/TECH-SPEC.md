@@ -1,7 +1,7 @@
 # Word Quiz 기술 스펙
 
-> 상태: v1.0 (확정) · 작성일: 2026-09-20  
-> 기준 문서: `docs/PRD.md` v1.2, `docs/word-quiz-mockup.html`(영어 UI, 컨펌 완료)  
+> 상태: v1.1 (확정) · 작성일: 2026-09-20 · 최종 수정: 2026-09-20  
+> 기준 문서: `docs/PRD.md` v1.3, `docs/word-quiz-mockup.html`(영어 UI, 컨펌 완료)  
 > 범위: **어떻게 만드는가**. 제품 요구사항은 PRD가, 작업 순서는 별도 실행 계획 문서가 다룬다.
 
 ---
@@ -22,6 +22,10 @@
 | T10 | 정규화에서 `? ! .`를 무시하고, 정답 변형에 **괄호를 그대로 둔 원형**을 포함 | 스파이크에서 발견한 결함 수정(14장). PRD D36 |
 | T11 | 괄호 밖의 쉼표만 구분자 | 실제 데이터에 괄호 안 쉼표가 있음. PRD D35 |
 | T12 | `--apply` 전에 DB를 `data/backup/`으로 자동 복사 | merge가 뜻·노트를 덮어쓰므로 되돌릴 수 있게 한다 |
+| T13 | DB 이름은 **대소문자를 무시하고 중복 판정** | Windows는 `Latin.db`와 `latin.db`를 같은 파일로 본다. Linux(WSL) 개발본에서만 통과하는 코드를 막는다 |
+| T14 | `.bat`은 **CRLF, BOM 없는 UTF-8**로 저장 (`.gitattributes`로 강제) | WSL에서 만든 LF 파일은 `cmd.exe`에서 오작동할 수 있다 |
+| T15 | 허용 `Host`를 **설정으로 추가**할 수 있게 한다 (`WORDQUIZ_ALLOWED_HOSTS`, `--allow-host`) | 향후 홈 네트워크 서버의 `nas.local` 같은 점 포함 이름을 허용하기 위해 (15장) |
+| T16 | 서버가 `APP_HOME/server.lock`을 만들고 종료 시 지운다. `deploy`는 lock이 있으면 중단한다 | 실행 중 서버는 옛 코드를 메모리에 두므로 새 `public/`과 어긋난다. 파일 기반이라 WSL ↔ Windows에서 그대로 동작한다 |
 
 ---
 
@@ -76,7 +80,7 @@ word-quiz/
 | `dev` | 서버(`tsx watch`)와 Vite dev 서버 동시 실행. Vite가 `/api`를 서버로 프록시 |
 | `build` | Vite → `dist/public/`, esbuild → `dist/server.mjs`, `dist/import.mjs` |
 | `package` | `dist/`와 `release/*.bat`을 `release/WordQuiz.zip`으로 묶는다 (`fflate`, 별도 `zip` 명령 불필요) |
-| `deploy` | `dist/`와 `release/*.bat`을 `/mnt/c/WordQuiz`로 복사. **`data/`, `reports/`는 절대 덮어쓰거나 지우지 않는다** |
+| `deploy` | `dist/`와 `release/*.bat`을 `/mnt/c/WordQuiz`로 복사. **`data/`, `reports/`는 절대 덮어쓰거나 지우지 않는다.** `server.lock`이 있으면 중단(`--force`로 무시, 8.5) |
 
 ### 2.4 번들 규칙
 - 서버와 CLI는 `--platform=node --format=esm --target=node22`로 번들한다. `node:sqlite`는 내장 모듈이라 자동으로 external이다.
@@ -96,6 +100,7 @@ word-quiz/
 - 언어는 파일명이 아니라 `meta` 테이블의 `language` 값이 기준이다.
 - `GET /api/databases`는 `data/`를 스캔해 각 파일을 **읽기 전용**으로 열고 `meta.language`와 단어 수를 읽는다. `meta`가 없거나 열리지 않는 파일은 목록에서 빼고 서버 콘솔에 경고를 남긴다.
 - DB 이름 규칙: `^[A-Za-z0-9_-]+\.db$`. 이 규칙에 맞고 **목록에 있는 이름**만 열 수 있다 (T9).
+- 이름 중복은 **대소문자를 무시하고** 판정한다 (T13). 스캔 결과에 대소문자만 다른 두 파일이 있으면 둘 다 목록에 넣되 서버 콘솔에 경고를 남긴다.
 
 ### 3.2 연결 설정 (`db/open.ts`)
 ```
@@ -354,7 +359,7 @@ node import.mjs <file.xlsx> [옵션]         (개발)
   --sheet <name>       읽을 시트 (기본: 첫 번째 시트)
   --report <path>      리포트 파일 경로 (기본: reports/<xlsx이름>_<yyyyMMdd-HHmmss>.txt)
 ```
-- 검증 모드에서 `--db`를 주면 기존 DB를 **읽기 전용**으로 열어 비교한다. `--new-db`는 파일을 만들지 않고 이름이 이미 쓰이고 있는지만 검사한다(있으면 오류).
+- 검증 모드에서 `--db`를 주면 기존 DB를 **읽기 전용**으로 열어 비교한다. `--new-db`는 파일을 만들지 않고 이름이 이미 쓰이고 있는지만 검사한다(있으면 오류, **대소문자 무시**, T13).
 - 종료 코드: `0` 정상, `1` 검증 오류가 있어 반영하지 않음, `2` 사용법·파일 입출력 오류.
 
 ### 6.2 Excel 읽기와 검증
@@ -496,6 +501,19 @@ node --disable-warning=ExperimentalWarning "%~dp0import.mjs" %*
 - `npm run dev`로 서버와 Vite를 함께 띄운다. `WORDQUIZ_HOME`을 프로젝트 안의 임시 디렉터리로 지정해 개발 데이터가 `data/` 샘플과 섞이지 않게 한다.
 - 배포 확인은 `npm run deploy` 후 Windows에서 `C:\WordQuiz\start.bat`을 실행한다.
 
+### 8.5 개발(WSL)과 실행(Windows)의 차이
+
+개발은 WSL, 실행은 Windows이므로 아래 차이를 코드와 스크립트에서 지킨다. 2026-09-20에 이 PC에서 확인한 사실을 근거로 한다.
+
+| 차이 | 확인한 사실 | 규칙 |
+|------|-------------|------|
+| **줄바꿈** | `cmd.exe`는 CRLF가 아닌 배치 파일에서 오작동할 수 있다. 저장소에는 `.gitattributes`와 `core.autocrlf` 설정이 없었다 | `.gitattributes`에 `*.bat text eol=crlf`, 소스는 `eol=lf`. `build`/`package`/`deploy`가 `.bat`을 CRLF, **BOM 없는 UTF-8**로 기록한다 (T14). 검증: 배포된 `.bat`의 모든 줄이 CRLF |
+| **파일명 대소문자** | Windows는 대소문자를 구분하지 않고 Linux는 구분한다 | DB 이름 중복 검사는 대소문자 무시 (T13). 경로는 `path.join`과 `fileURLToPath`를 쓰고 `/`나 `\\`를 하드코딩하지 않는다 |
+| **실행 중인 스크립트** | 실행 중인 `server.mjs`는 **잠기지 않아 덮어쓰기가 허용**된다. 다만 실행 중인 서버는 **옛 코드를 메모리에** 두고 있어 새 `public/`과 어긋난다 | 서버가 `server.lock`을 만들고 종료 시 지운다. `deploy`는 lock이 있으면 "서버를 먼저 종료하세요"로 중단하고 `--force`로만 진행한다 (T16). 비정상 종료로 남은 lock은 서버가 다음 기동 때 덮어쓴다 |
+| **열린 DB 파일** | 서버가 연 SQLite 파일은 **삭제·이름 변경이 차단**된다(`Permission denied`). **복사는 허용**된다 | 자동 백업(T12)은 파일 복사라 서버 실행 중에도 동작한다. 테스트와 스크립트는 DB를 `close()`한 뒤에 지운다. `deploy`는 `data/`를 건드리지 않는다 |
+| **OS를 넘나드는 DB 접근** | `/mnt/c`(WSL에서 본 Windows 파일)는 SQLite 잠금이 불안정할 수 있다 | WSL에서 Windows 쪽 DB를 열 때는 **읽기 전용, 순차 접근**만 한다. 같은 DB를 WSL과 Windows가 **동시에** 열지 않는다. 자동 검증은 이 규칙을 따른다 |
+| **휴대폰 접속 검증** | WSL은 NAT라 휴대폰에서 직접 닿지 않는다. Windows의 `curl.exe`는 WSL 서버의 `localhost`에 접속된다 | 휴대폰 접속은 **Windows에 배포한 서버**로만 확인한다. Windows 브라우저에서 WSL의 Vite dev 서버를 보는 것은 가능하다 |
+
 ---
 
 ## 9. 보안
@@ -505,7 +523,7 @@ node --disable-warning=ExperimentalWarning "%~dp0import.mjs" %*
 | 위험 | 대책 |
 |------|------|
 | 외부 웹페이지가 브라우저를 통해 `localhost:35000`에 요청을 보냄 (CSRF) | 쓰기 요청은 `Content-Type: application/json`을 요구하고 **CORS 헤더를 보내지 않는다**. 교차 출처 JSON 요청은 사전 요청(preflight)에서 막힌다 |
-| DNS 리바인딩 | `Host` 헤더 검사: 점이 없는 단일 이름(`localhost`, PC 이름), `127.0.0.1`, `[::1]`, 사설 IPv4(`10/8`, `172.16/12`, `192.168/16`)만 허용한다. 그 외는 403 |
+| DNS 리바인딩 | `Host` 헤더 검사: 점이 없는 단일 이름(`localhost`, PC 이름), `127.0.0.1`, `[::1]`, 사설 IPv4(`10/8`, `172.16/12`, `192.168/16`)만 허용한다. 그 외는 403. 점이 있는 이름(예: `nas.local`)은 `WORDQUIZ_ALLOWED_HOSTS`(쉼표 구분) 또는 `--allow-host`로 **명시적으로 추가**해야 한다 (T15) |
 | 경로 조작 | DB 이름은 정규식 + 서버 목록 대조 (T9). 사용자 입력이 파일 경로에 직접 쓰이지 않는다 |
 | SQL 주입 | 모든 쿼리는 파라미터 바인딩(`prepare().run/get/all`)만 사용한다 |
 | HTML 주입 | React 기본 이스케이프 사용, `dangerouslySetInnerHTML` 금지 |
@@ -545,6 +563,11 @@ node --disable-warning=ExperimentalWarning "%~dp0import.mjs" %*
 | 사용자가 고친 뜻을 재 import가 덮어씀 | 수정 내용 손실 | 갱신 항목의 이전 → 이후 값을 리포트에 표시하고 반영 전에 자동 백업 |
 | 제출 후 뜻 수정으로 과거 `hits`가 어긋남 | 이력 표시 오류 | 이번 범위에 이력 화면이 없어 영향 없음. 이력 화면을 만들 때 스냅샷 컬럼을 추가한다 |
 | 두 기기에서 동시 접속 | 같은 세션을 함께 조작 | 단일 사용자 전제. 두 번째 기기는 같은 세션 상태를 그대로 본다 |
+| `.bat`이 LF로 저장됨 | `cmd.exe`에서 오작동 | `.gitattributes` + 빌드 시 CRLF 변환 + 배포본 줄바꿈 검증 (T14) |
+| 대소문자만 다른 DB 이름 | Windows에서 충돌, 다른 파일을 덮어씀 | 이름 중복 검사를 대소문자 무시로 (T13) |
+| 실행 중인 서버를 두고 `deploy` | 옛 서버와 새 `public/` 불일치 | `server.lock` 검사 (T16) |
+| 열린 DB를 지우거나 이름 변경하는 스크립트·테스트 | Windows에서 `Permission denied` | 항상 `close()` 후 조작. 백업은 복사 방식 (8.5) |
+| 향후 홈 서버에서 점 포함 호스트 이름으로 접속 | `Host` 검사가 403 | 허용 Host 추가 설정 (T15) |
 | 채점 규칙 이해 차이 | 정답인데 오답 처리 | 4.1 예시 표를 테스트로 고정하고, 정답 줄에 묶음별 ✓/✗를 보여 원인을 알 수 있게 한다 |
 
 ---
@@ -616,3 +639,16 @@ node --disable-warning=ExperimentalWarning "%~dp0import.mjs" %*
 | `node_modules` 없는 디렉터리에서 실행 | 성공 (`createRequire` 배너 필요, 없으면 `Dynamic require of "fs"` 오류) |
 | 샘플 xlsx 읽기 | 시트 `Wortschatz` 179행(헤더 포함), 빈 셀은 `null`, 헤더 `["단어","뜻1","뜻2","뜻3","뜻4","노트"]` |
 | 번들 안에서 `node:sqlite` import | 정상 (external) |
+
+---
+
+## 15. 향후 확장: 홈 네트워크 별도 서버
+
+이번 범위는 **PC에서 서버를 실행하고 같은 네트워크의 휴대폰 브라우저로 접속**하는 것이다. 휴대폰 단독 실행은 지원하지 않는다(PRD D37). 향후에는 홈 네트워크에 별도 서버를 두고 PC와 휴대폰 모두 거기에 접속하는 방식으로 옮길 계획이다. 그때를 위해 현재 설계에서 유지하는 것과 그때 바꿀 것을 정리한다.
+
+| 구분 | 내용 |
+|------|------|
+| **이미 대비된 것** | 네이티브 모듈이 없고 `node_modules` 없이 단일 번들로 동작하므로, Node 22.13 이상만 있으면 Linux 서버나 NAS에서도 그대로 실행된다. 데이터는 `.db` 파일 하나라 서버 이전은 파일 복사다. 서버 바인딩(`0.0.0.0` / `--local-only`), 포트(`PORT`), 데이터 위치(`WORDQUIZ_HOME`)가 이미 설정 가능하다. 채점·출제 규칙이 `src/shared`에 분리되어 있다 |
+| **지금 넣는 것** | 허용 `Host` 추가 설정 (T15). 점이 있는 이름(`nas.local`)으로 접속해도 막히지 않게 한다 |
+| **그때 결정할 것** | ① **인증**: 지금은 LAN 내 무인증이다. 홈 서버가 상시 켜져 있고 다른 기기도 접근할 수 있게 되면 접근 코드(PIN)나 기본 인증을 검토한다 ② 상시 실행 방식(systemd, Docker, NAS 앱 등)과 자동 시작 ③ 백업 주기(`data/backup/`는 merge 직전 백업뿐이다) ④ 리버스 프록시나 HTTPS가 필요한지 ⑤ 파일 이름 대소문자(Linux는 구분, T13) ⑥ 서버 시간대(일자별 통계가 로컬 날짜 기준) |
+| **바꾸지 않을 것** | API 계약, DB 스키마, 클라이언트. 서버 위치만 바뀌고 앱 구조는 그대로다 |
