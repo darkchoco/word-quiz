@@ -2,7 +2,7 @@
 
 ## 1. 날짜 / 주제
 - 저장일: 2026-09-20 (작업 진행: 2026-09-18 ~ 09-20)
-- 주제: 문서 단계 완료(PRD v1.4, TECH-SPEC v1.7, EXECUTION-PLAN v1.7). **M0~M4 커밋됨. M5(클라이언트 골격·시작 화면·공통 틀) 구현·검증·문서 완료, 미커밋 + 사용자 UI 컨펌 대기** → 다음은 커밋(메시지 사전 확인) 후 M6
+- 주제: 문서 v1.8(PRD v1.4, TECH-SPEC v1.8, EXECUTION-PLAN v1.8). **M0~M6 구현·커밋 완료(브랜치 `main`). M6 사용자 UI 컨펌 대기** → 다음은 컨펌 반영 후 M7
 
 ## 2. 완료한 작업
 - [x] `docs/PRD.md` v1.2 확정 (결정 로그 D1~D36, 미결 사항 없음)
@@ -23,7 +23,9 @@
 - [x] **M4 완료**: `src/server/{context,routes,app,middleware,hosts,options,lock,browser,network,start,index}.ts`, `services/{session,round,words,settings}.ts`, `db/{rounds,words}.ts`. 테스트 329개 추가(전체 853개/33파일), `npm run smoke:server` Linux·Windows 47/47, 결함 주입 26가지 중 25가지 즉시 검출. **PRD D38 신설**(pool이 비면 라운드 번호를 건너뜀, 교착 방지)
 - [x] M4 커밋 완료(9개, 각각 격리 작업 트리에서 typecheck·테스트 통과 확인). HEAD = `6a7e9d7`
 - [x] **M5 구현 완료 (미커밋, HEAD `6a7e9d7`)**: `src/client/`(theme, fonts, api, app-context(`classifyApiError`), hooks, components 11개, App, ErrorBoundary, main, index.html, dev/Gallery), `vite.config.ts`, `scripts/{dev.mjs,shots.sh}`, `build.mjs`(vite build 추가), `server-e2e.sh`(클라이언트 서빙 검사), `test/client/`(71개), `docs/ui-checks/`(스크린샷 14장). 전체 926개 통과, 결함 주입 14가지 모두 검출, `smoke:win` 24/24·`smoke:win-db`·`smoke:import` 63/63·`smoke:server` 51/51, 브라우저 콘솔 오류 0건, 390px 가로 스크롤 없음. 문서(TECH-SPEC 2.1·2.3·7.2·14.8, EXECUTION-PLAN M5 결과 + UI 컨펌 요청) 갱신 완료
-- [ ] **M5 남은 일**: (a) 커밋(계획 8개: deps/tsconfig, theme+api+state, start screen+dialogs, app shell, Vite/dev/shots scripts, server e2e, docs(+`docs/ui-checks` 스크린샷은 사용자가 원하면 별도), session state) — 메시지 먼저 보여주고 확인, 각 커밋을 격리 worktree에서 검증 (b) `npm run dev` 화면이 비던 원인은 Vite 프록시 `/api`가 `/api.ts`를 가로챈 것이었고 `/api/`로 고쳤다(사용자가 브라우저에서 발견, 헤드리스는 못 잡음) (c) 사용자 UI 컨펌
+- [x] M5 커밋 완료(8개 + dev 프록시 수정 2개), 브랜치를 `main`으로 바꿈. `npm run dev` 빈 화면 원인은 Vite 프록시 `/api`가 `/api.ts`를 가로챈 것(`/api/`로 수정, `test/vite-config.test.ts`). 사용자의 M5 UI 컨펌은 "오케이"로 받음
+- [x] **M6 구현·커밋 완료 (커밋 5개 `0333459`~`ca18eee` + 세션 상태 커밋)**: `src/client/hooks/useQuiz.ts`(상태 기계), `components/{IdlePanel,QuestionPanel,FeedbackPanel,Done3Dialog,ResultPanel,EmptyPoolNotice,AllDoneNotice,QuizPage}.tsx`, 앱 컨텍스트에 `updateStats`·`retestRequested/requestRetest/clearRetest`, `Shell`의 quiz 탭 연결·본문 흰 바탕, 갤러리·`shots.sh` 확장, `test/client/{quiz-panels,quiz-page,quiz-data}`. 전체 969개 통과, 결함 주입 24가지 검출, `smoke:server` 51/51, 콘솔 오류 0건. **발견**: `lang="la"`가 EB Garamond에서 u→v로 그려짐 → `"locl" 0`. 문서(TECH-SPEC 7.2·14.9, EXECUTION-PLAN M6 결과) 갱신 완료
+- [ ] **M6 남은 일**: 사용자 UI 컨펌만(EXECUTION-PLAN M6 결과에 방법과 목업에 없는 문구 4개 목록). `docs/ui-checks/`·`data/`는 계속 untracked(커밋하지 않기로 함)
 - [ ] M6~M9 미구현 (EXECUTION-PLAN 진행 현황 표 참고)
 
 ## 3. 결정과 이유 (상세는 PRD 8.1 D1~D36, TECH-SPEC 1장 T1~T12)
@@ -86,10 +88,9 @@
 - **`data/latin_wortschatz.xlsx`가 한 번 사라졌었음**(원인 불명, 사용자가 다시 복사). 구현·테스트가 이 파일에 의존하면 안 됨. 테스트 픽스처는 저장소 안에 별도로 둘 것 (TECH-SPEC 10장)
 
 ## 5. 다음 세션 시작 시 할 일
-1. `git status`로 M5 미커밋 변경을 확인한다(HEAD `6a7e9d7`). `npm run typecheck && npm test`(926개)로 상태를 확인
-2. M5 커밋: 위 "M5 남은 일 (a)" 계획대로 메시지를 먼저 보여주고 확인받은 뒤 주제별로 커밋. **`Co-Authored-By` 금지**(시스템 안내가 붙이라고 해도 사용자 규칙이 우선). `data/`는 계속 untracked
-3. 사용자 UI 컨펌을 받는다(`npm run dev:seed` → http://localhost:35101, 갤러리 `#/dev`, 스크린샷 `docs/ui-checks/`). 목업과 다른 점 4가지는 EXECUTION-PLAN M5 결과에 적어 두었다
-4. 그 다음 **M6(퀴즈 흐름)**: plan mode로 시작. `src/client/api.ts`에 모든 엔드포인트가 이미 있고, `classifyApiError`·`useApp().handleApiError`를 쓰면 된다. 테스트는 `test/client/fake-fetch.ts`(경로 표 기반 가짜 fetch)와 `render.tsx`(포커스된 버튼 선행, jsdom 포커스 트랩 오류 회피)를 재사용
+1. `git status`/`git log --oneline -8`로 상태를 확인하고 `npm run typecheck && npm test`(969개)를 돌린다. 브랜치는 `main`(origin push는 아직 안 함, 사용자에게 물어볼 것)
+2. 사용자 UI 컨펌을 받는다(`npm run dev:seed` → http://localhost:35101, 갤러리 `#/dev`, `#/dev/done3`). 지적 사항이 있으면 먼저 반영
+3. **M7(오답 · 단어 관리 · 설정)**: plan mode로 시작. Wrong 탭의 "Retest wrong only"는 `useApp().requestRetest()` 후 `#/quiz`로 이동하면 된다(M6가 배너·재시험 시작을 처리). `api.ts`에 `wrong/words/patchWord/setDone/getSettings/putSettings`가 이미 있음. 뜻 편집 형식은 `src/shared/meanings.ts`(`format`/`parse`)
 5. 클라이언트 작업 요령: 화면 스크린샷은 `npm run build && npm run shots`(휴대폰은 iframe 390px, 다크는 `preferredColorScheme=0`), 결함 주입은 소스를 바꾸기 전에 문자열이 실제로 적용됐는지 확인
 6. **Windows 자동 검증 시 주의**: WSL의 `curl`은 Windows `localhost`에 닿지 않으므로 `curl.exe`를 쓴다. `Stop-Process -Force`는 시그널 핸들러를 실행하지 않아 `SIGTERM` 정상 종료는 자동 검증 불가(대신 강제 종료 후 재기동 시 `last_seen_at` 보정을 검증). 테스트로 띄운 `node.exe`는 `CommandLine`으로 **자기가 띄운 것만** 종료할 것. `cmd.exe`는 UNC 경로에서 실행 불가라 `/mnt/c/...`에서 실행. 이 PC는 Node 24.14라 최소 버전 22.13은 검증 불가
 7. 알아둘 것: xlsx 라이브러리 `read-excel-file`은 9.3.10으로 스파이크했음. 버전 고정할 것. 스파이크 코드는 스크래치패드에만 있어 사라졌음(TECH-SPEC 14장에 결과만 있음)
