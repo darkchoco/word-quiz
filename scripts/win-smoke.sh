@@ -45,7 +45,7 @@ cleanup() {
   sleep 1
   rm -rf "$TMP"
   # A force-killed Windows process leaves its smoke DB behind; remove it once the handle is gone.
-  rm -rf "$WIN_DEV/data/smoke.db" "$WIN_DEV/envtest" "$WIN_DEV/sample.xlsx" 2>/dev/null
+  rm -rf "$WIN_DEV/data/smoke.db" "$WIN_DEV/envtest" "$WIN_DEV/sample.xlsx" "$WIN_DEV/sample-report.txt" 2>/dev/null
 }
 trap cleanup EXIT
 
@@ -72,10 +72,12 @@ else
   fail "server did not answer /health"; cat "$TMP/linux.log"
 fi
 if [ -f "$SAMPLE" ]; then
-  node $NODE_FLAGS "$TMP/linux/import.mjs" "$SAMPLE" >"$TMP/linux-cli.out" 2>&1
-  check "cli reads 178 rows"           "grep -q '^rows: 178' '$TMP/linux-cli.out'"
-  check "cli prints Korean header"     "grep -q '단어' '$TMP/linux-cli.out'"
-  check "cli prints macron (ī)"        "grep -q 'ī' '$TMP/linux-cli.out'"
+  # Check mode only: nothing is written except the report file that is named here.
+  node $NODE_FLAGS "$TMP/linux/import.mjs" "$SAMPLE" --new-db importcheck --lang latin --report "$TMP/linux-report.txt" >"$TMP/linux-cli.out" 2>&1
+  check "cli exits 0"                  "[ $? -eq 0 ]"
+  check "cli finds 178 words"          "grep -q 'Added             : 178' '$TMP/linux-cli.out'"
+  check "cli finds no errors"          "grep -q 'Errors            : 0' '$TMP/linux-cli.out'"
+  check "cli prints macron (ī)"        "grep -q 'Prōmētheus' '$TMP/linux-cli.out'"
 else
   echo "  SKIP  sample xlsx not found ($SAMPLE)"
 fi
@@ -102,10 +104,11 @@ else
   fi
 
   if [ -f "$WIN_DEV/sample.xlsx" ]; then
-    "$NODE_WIN" "$WIN_DEV_W\\import.mjs" "$WIN_DEV_W\\sample.xlsx" >"$TMP/win-cli.out" 2>&1
-    check "cli reads 178 rows on Windows"      "grep -q '^rows: 178' '$TMP/win-cli.out'"
-    check "UTF-8 Korean header survives"       "grep -q '단어' '$TMP/win-cli.out'"
-    check "UTF-8 macron (ī) survives"          "grep -q 'ī' '$TMP/win-cli.out'"
+    "$NODE_WIN" $NODE_FLAGS "$WIN_DEV_W\\import.mjs" "$WIN_DEV_W\\sample.xlsx" --new-db importcheck --lang latin --report "$WIN_DEV_W\\sample-report.txt" >"$TMP/win-cli.out" 2>&1
+    check "cli exits 0 on Windows"             "[ $? -eq 0 ]"
+    check "cli finds 178 words on Windows"     "grep -q 'Added             : 178' '$TMP/win-cli.out'"
+    check "cli reads the Korean header (no errors)" "grep -q 'Errors            : 0' '$TMP/win-cli.out'"
+    check "UTF-8 macron (ī) survives"          "grep -q 'Prōmētheus' '$TMP/win-cli.out'"
   else
     echo "  SKIP  sample xlsx not found"
   fi
