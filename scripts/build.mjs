@@ -33,3 +33,10 @@ for (const [entry, out] of entries) {
   const kb = (fs.statSync(path.join(dist, out)).size / 1024).toFixed(0);
   console.log(`dist/${out}  ${kb} KB`);
 }
+
+// The web app goes to dist/public, which the server serves (APP_HOME/public).
+const { build: viteBuild } = await import('vite');
+await viteBuild({ configFile: path.join(root, 'vite.config.ts'), logLevel: 'warn' });
+const assets = fs.readdirSync(path.join(dist, 'public', 'assets'));
+const jsKb = assets.filter((f) => f.endsWith('.js')).reduce((sum, f) => sum + fs.statSync(path.join(dist, 'public', 'assets', f)).size, 0) / 1024;
+console.log(`dist/public  index.html + ${assets.length} assets, JS ${jsKb.toFixed(0)} KB`);
