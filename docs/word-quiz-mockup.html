@@ -1,0 +1,521 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Word Quiz 목업</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=EB+Garamond:wght@500;600&family=Noto+Sans+KR:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#E9EDF3; --surface:#FFFFFF; --surface-2:#F4F6FA; --ink:#16202E; --muted:#5A6879; --line:#D3DAE3;
+  --accent:#2F55B5; --accent-soft:#E4EAF8; --on-accent:#FFFFFF;
+  --good:#1E7A4C; --good-soft:#DDF1E5; --bad:#B8382E; --bad-soft:#F9E1DE; --warn:#8A5A00; --warn-soft:#FBEDD0;
+  --shadow:0 1px 2px rgba(22,32,46,.06),0 8px 28px rgba(22,32,46,.10);
+  --f-ui:"Noto Sans KR",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-word:"EB Garamond","Iowan Old Style",Georgia,"Noto Serif KR",serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#0B111A; --surface:#161F2E; --surface-2:#1C2738; --ink:#E6EBF2; --muted:#9AA7B8; --line:#2A3648;
+    --accent:#88A5F2; --accent-soft:#1F2D4F; --on-accent:#0B111A;
+    --good:#5CC792; --good-soft:#15352A; --bad:#F2887F; --bad-soft:#42211F; --warn:#E6B65A; --warn-soft:#3B2F13;
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 28px rgba(0,0,0,.45);
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0B111A; --surface:#161F2E; --surface-2:#1C2738; --ink:#E6EBF2; --muted:#9AA7B8; --line:#2A3648;
+  --accent:#88A5F2; --accent-soft:#1F2D4F; --on-accent:#0B111A;
+  --good:#5CC792; --good-soft:#15352A; --bad:#F2887F; --bad-soft:#42211F; --warn:#E6B65A; --warn-soft:#3B2F13;
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 28px rgba(0,0,0,.45);
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--f-ui);font-size:15px;line-height:1.55;padding-inline:16px;padding-block:20px 48px}
+img{max-width:100%}
+button,input,select{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+/* ---------- mockup controller (outside the app) ---------- */
+.stage{max-width:920px;margin:0 auto;display:flex;flex-direction:column;gap:16px}
+.ctl{display:flex;flex-direction:column;gap:10px}
+.ctl-head{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:8px 16px}
+.ctl h1{margin:0;font-size:17px;font-weight:700}
+.ctl p{margin:0;color:var(--muted);font-size:13px}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:4px 12px;font-size:13px;cursor:pointer;color:var(--ink)}
+.chip[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+.chip-group{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:var(--surface)}
+.seg button{border:0;background:transparent;padding:4px 12px;font-size:13px;cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--surface)}
+
+.notes{border-top:1px solid var(--line);padding-top:12px;font-size:13.5px;color:var(--muted)}
+.notes h2{margin:0 0 6px;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink)}
+.notes ul{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:3px;max-width:70ch}
+.notes b{color:var(--ink);font-weight:500}
+
+/* ---------- app frame ---------- */
+.frame{position:relative;margin-inline:auto;width:100%;container-type:inline-size;transition:width .2s}
+.frame.is-mobile{width:390px;max-width:100%}
+.app{background:var(--surface);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow);overflow:hidden;display:flex;flex-direction:column;min-height:560px}
+.frame.is-mobile .app{min-height:640px}
+
+.topbar{display:flex;flex-wrap:wrap;align-items:center;gap:8px 16px;padding:12px 20px;border-bottom:1px solid var(--line)}
+.brand{font-family:var(--f-word);font-weight:600;font-size:22px;letter-spacing:.01em;margin-right:4px}
+.dbpill{display:inline-flex;align-items:center;gap:8px;font-size:13px;background:var(--surface-2);border:1px solid var(--line);border-radius:8px;padding:3px 4px 3px 10px}
+.dbpill .lang{font-weight:700}
+.dbpill code{font-family:var(--f-mono);font-size:12.5px;color:var(--muted)}
+.dbpill button{border:0;background:var(--accent-soft);color:var(--accent);border-radius:6px;padding:2px 10px;font-size:12.5px;cursor:pointer;font-weight:500}
+.tabs{display:flex;gap:2px;padding:0 12px;border-bottom:1px solid var(--line);overflow-x:auto;background:var(--surface)}
+.tab{border:0;background:transparent;padding:10px 14px;font-size:14.5px;cursor:pointer;color:var(--muted);border-bottom:2px solid transparent;white-space:nowrap}
+.tab[aria-current="page"]{color:var(--ink);font-weight:700;border-bottom-color:var(--accent)}
+
+main{flex:1;padding:28px 24px;display:flex;flex-direction:column}
+.screen{flex:1;display:flex;flex-direction:column;gap:20px}
+.center{align-items:center;justify-content:center;text-align:center}
+h2.title{margin:0;font-size:18px;font-weight:700}
+.sub{color:var(--muted);font-size:13.5px}
+
+.status{display:flex;flex-wrap:wrap;gap:4px 24px;padding:9px 20px;border-top:1px solid var(--line);background:var(--surface-2);font-size:13px;color:var(--muted)}
+.status b{font-family:var(--f-mono);font-weight:500;color:var(--ink);font-variant-numeric:tabular-nums}
+
+/* ---------- controls ---------- */
+.btn{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:8px 16px;cursor:pointer;font-weight:500}
+.btn:hover:not(:disabled){background:var(--surface-2)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+.btn.primary:hover:not(:disabled){background:var(--accent);filter:brightness(1.08)}
+.btn.lg{padding:11px 36px;font-size:16px}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.field{display:flex;flex-direction:column;gap:6px;text-align:left}
+.field label,.legend{font-size:13px;color:var(--muted)}
+input[type=text],input[type=number],select{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:9px 12px;font-size:16px;min-width:0}
+input[type=text]:disabled{background:var(--surface-2)}
+.radios{display:flex;flex-wrap:wrap;gap:8px 20px}
+.radios label{display:inline-flex;align-items:center;gap:6px;cursor:pointer;font-size:15px;color:var(--ink)}
+.radios label.off{color:var(--muted);cursor:not-allowed}
+.badge{font-size:11.5px;border:1px solid var(--line);border-radius:999px;padding:0 8px;color:var(--muted);background:var(--surface-2)}
+
+.startcard{width:100%;max-width:420px;display:flex;flex-direction:column;gap:22px;text-align:left}
+.startcard h1{margin:0;font-family:var(--f-word);font-size:38px;font-weight:600;line-height:1.1}
+.startcard .btn{align-self:stretch}
+
+/* ---------- quiz ---------- */
+.progress{display:flex;align-items:center;gap:12px;font-size:13px;color:var(--muted)}
+.bar{flex:1;height:4px;background:var(--surface-2);border-radius:2px;overflow:hidden;border:1px solid var(--line)}
+.bar i{display:block;height:100%;background:var(--accent)}
+.count{font-family:var(--f-mono);font-variant-numeric:tabular-nums;color:var(--ink)}
+.dir{border:1px solid var(--line);border-radius:6px;padding:0 8px;font-size:12px}
+.headword{font-family:var(--f-word);font-weight:500;font-size:clamp(28px,6cqi,42px);line-height:1.2;text-wrap:balance;margin:14px 0 4px;overflow-wrap:anywhere}
+.qform{display:flex;gap:8px}
+.qform input{flex:1}
+.fb{border:1px solid var(--line);background:var(--surface-2);border-radius:10px;padding:16px;display:flex;flex-direction:column;gap:12px}
+.verdict{align-self:flex-start;font-weight:700;font-size:13.5px;border-radius:6px;padding:2px 10px}
+.verdict.v-perfect{background:var(--good-soft);color:var(--good)}
+.verdict.v-partial{background:var(--warn-soft);color:var(--warn)}
+.verdict.v-wrong{background:var(--bad-soft);color:var(--bad)}
+.ansline{display:flex;flex-wrap:wrap;gap:6px 8px;align-items:baseline}
+.ans-label{font-size:13px;color:var(--muted);margin-right:2px}
+.grp{display:inline-flex;gap:6px;align-items:baseline;border-radius:6px;padding:1px 10px 1px 8px;font-weight:500}
+.grp i{font-style:normal;font-size:12px}
+.grp.hit{background:var(--good-soft);color:var(--good)}
+.grp.miss{background:var(--bad-soft);color:var(--bad)}
+.legend-note{font-size:12.5px;color:var(--muted)}
+.actions{display:flex;flex-wrap:wrap;gap:8px;justify-content:space-between}
+.actions .right{margin-left:auto}
+kbd{font-family:var(--f-mono);font-size:11.5px;border:1px solid var(--line);border-bottom-width:2px;border-radius:4px;padding:0 5px;background:var(--surface)}
+
+.result{width:100%;max-width:380px;display:flex;flex-direction:column;gap:14px;align-items:center}
+.bigpct{font-family:var(--f-word);font-size:64px;font-weight:600;line-height:1;font-variant-numeric:lining-nums}
+
+/* ---------- tables ---------- */
+.tablewrap{overflow-x:auto;border:1px solid var(--line);border-radius:10px}
+table{border-collapse:collapse;width:100%;font-size:14.5px}
+th,td{padding:10px 14px;text-align:left;border-bottom:1px solid var(--line);vertical-align:top}
+tr:last-child td{border-bottom:0}
+th{font-size:12px;letter-spacing:.06em;color:var(--muted);font-weight:500;background:var(--surface-2);white-space:nowrap}
+td.w{font-family:var(--f-word);font-size:18px;min-width:180px}
+td.c{text-align:center;width:64px}
+td.m .g+.g::before{content:" / ";color:var(--muted)}
+td input[type=text]{width:100%;font-size:14.5px;padding:5px 8px}
+.rowbar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between}
+.rowbar input{min-width:0;flex:0 1 220px;font-size:14.5px;padding:6px 10px}
+.hint{font-size:12.5px;color:var(--muted)}
+.mark{font-size:11.5px;color:var(--bad);border:1px solid var(--bad);border-radius:999px;padding:0 6px;margin-left:6px;white-space:nowrap;font-family:var(--f-ui)}
+
+/* ---------- overlays ---------- */
+.overlay{position:absolute;inset:0;background:rgba(10,16,26,.5);display:flex;align-items:flex-start;justify-content:center;padding:96px 16px 16px;border-radius:12px;z-index:5}
+.dialog{background:var(--surface);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow);padding:22px;width:100%;max-width:380px;display:flex;flex-direction:column;gap:16px}
+.dialog h3{margin:0;font-size:16px}
+.dialog p{margin:0;color:var(--muted)}
+.dialog .actions{justify-content:flex-end}
+.toast{position:absolute;left:50%;bottom:56px;transform:translateX(-50%);background:var(--ink);color:var(--surface);padding:7px 16px;border-radius:8px;font-size:13.5px;z-index:6;white-space:nowrap}
+
+/* ---------- narrow frame (phone or small window) ---------- */
+@container (max-width:560px){
+  main{padding:20px 16px}
+  .topbar{padding:10px 16px}
+  .qform{flex-direction:column}
+  .qform .btn{width:100%}
+  .status{gap:2px 16px;padding:8px 16px}
+  .actions .btn{flex:1}
+}
+@media (prefers-reduced-motion:reduce){.frame{transition:none}}
+</style>
+</head>
+<body>
+
+<div class="stage">
+  <section class="ctl" aria-label="목업 컨트롤">
+    <div class="ctl-head">
+      <h1>Word Quiz 목업 <span class="badge">PRD v1.0 · 컨펌용</span></h1>
+      <div class="seg" role="group" aria-label="화면 크기">
+        <button type="button" id="dev-pc" aria-pressed="true">PC</button>
+        <button type="button" id="dev-mo" aria-pressed="false">모바일</button>
+      </div>
+    </div>
+    <p>실제로 입력해서 채점해 볼 수 있습니다. 예시 단어는 <code>latin_wortschatz.xlsx</code>에서 가져왔고, 데모 라운드는 5문제로 줄였습니다.</p>
+    <div class="chip-group" id="chips"></div>
+  </section>
+
+  <div class="frame" id="frame">
+    <div class="app">
+      <div class="topbar" id="topbar" hidden>
+        <span class="brand">Word Quiz</span>
+        <span class="dbpill"><span><span class="lang">Latin</span> ▸ <code id="dbname">latin.db</code></span><button type="button" id="dbswitch">DB 전환</button></span>
+      </div>
+      <nav class="tabs" id="tabs" aria-label="메뉴" hidden>
+        <button class="tab" data-tab="quiz">퀴즈</button>
+        <button class="tab" data-tab="wrong">오답</button>
+        <button class="tab" data-tab="words">단어관리</button>
+        <button class="tab" data-tab="settings">설정</button>
+      </nav>
+
+      <main>
+        <!-- 시작 -->
+        <section class="screen center" data-screen="start">
+          <div class="startcard">
+            <h1>Word Quiz</h1>
+            <div class="field">
+              <span class="legend">언어</span>
+              <div class="radios">
+                <label><input type="radio" name="lang" checked> Latin</label>
+                <label class="off"><input type="radio" name="lang" disabled> English <span class="badge">준비 중</span></label>
+              </div>
+            </div>
+            <div class="field">
+              <label for="dbsel">DB</label>
+              <select id="dbsel"><option>latin.db</option><option>latin_2.db</option></select>
+            </div>
+            <button class="btn primary lg" id="go" type="button">시작</button>
+          </div>
+        </section>
+
+        <!-- 라운드 시작 전 -->
+        <section class="screen" data-screen="idle" hidden>
+          <div id="retest-banner" class="fb" hidden><b>오답 재시험</b><span class="sub">오답 마크된 단어만으로 라운드를 구성합니다. 출제 제외 규칙은 동일하게 적용됩니다.</span></div>
+          <div class="field">
+            <span class="legend">출제 방향</span>
+            <div class="radios">
+              <label><input type="radio" name="dir" checked> 단어→뜻</label>
+              <label class="off"><input type="radio" name="dir" disabled> 뜻→단어</label>
+              <label class="off"><input type="radio" name="dir" disabled> Mix</label>
+            </div>
+            <span class="hint">Latin은 단어→뜻만 지원합니다.</span>
+          </div>
+          <p class="sub" style="margin:0">라운드 <b style="color:var(--ink)" class="count">12</b> · 출제 가능한 단어 <b style="color:var(--ink)" class="count">143</b>개 · 라운드당 <b style="color:var(--ink)" class="count">20</b>문제</p>
+          <div><button class="btn primary lg" id="start-round" type="button">Start</button></div>
+        </section>
+
+        <!-- 퀴즈 진행 -->
+        <section class="screen" data-screen="quiz" hidden>
+          <div class="progress"><span class="dir">단어→뜻</span><span class="bar"><i id="pbar" style="width:0"></i></span><span class="count" id="pcount">1 / 5</span></div>
+          <div class="headword" id="headword" lang="la"></div>
+          <form class="qform" id="qform" autocomplete="off">
+            <input type="text" id="answer" aria-label="뜻 입력" placeholder="뜻을 입력하세요 (쉼표로 구분)" spellcheck="false">
+            <button class="btn primary" id="submit" type="submit">Submit</button>
+          </form>
+          <div class="fb" id="fb" hidden aria-live="polite">
+            <span class="verdict" id="verdict"></span>
+            <div class="ansline" id="ansline"></div>
+            <span class="legend-note" id="fbnote"></span>
+            <div class="actions">
+              <button class="btn" id="donebtn" type="button">완료 표시</button>
+              <button class="btn primary right" id="nextbtn" type="button">다음 문제 <kbd>Enter</kbd></button>
+            </div>
+          </div>
+        </section>
+
+        <!-- 라운드 결과 -->
+        <section class="screen center" data-screen="result" hidden>
+          <div class="result">
+            <h2 class="title">라운드 종료</h2>
+            <div class="bigpct" id="rpct">80%</div>
+            <div id="rtext">5문제 중 4개 정답</div>
+            <button class="btn primary lg" id="again" type="button">다시 시작</button>
+          </div>
+        </section>
+
+        <!-- 오답 목록 -->
+        <section class="screen" data-screen="wrong" hidden>
+          <div class="rowbar">
+            <h2 class="title">틀린 단어 <span class="count" id="wrongcount">(6)</span></h2>
+            <button class="btn primary" id="retest" type="button">오답만 재시험</button>
+          </div>
+          <div class="tablewrap"><table><thead><tr><th>단어</th><th>뜻</th></tr></thead><tbody id="wrongbody"></tbody></table></div>
+          <span class="hint">완료 처리된 단어는 이 목록에서 빠집니다.</span>
+        </section>
+
+        <!-- 단어 관리 -->
+        <section class="screen" data-screen="words" hidden>
+          <div class="rowbar">
+            <h2 class="title">단어 관리 <span class="sub">(전체 178개 중 예시 9개)</span></h2>
+            <input type="text" id="wfilter" placeholder="단어 검색" aria-label="단어 검색">
+          </div>
+          <div class="tablewrap"><table><thead><tr><th>단어</th><th>뜻</th><th>완료</th><th></th></tr></thead><tbody id="wordsbody"></tbody></table></div>
+          <span class="hint">뜻 묶음은 <kbd>|</kbd>로, 묶음 안의 동의어는 쉼표로 구분해 수정합니다. 단어 추가/삭제는 import CLI에서만 가능합니다.</span>
+        </section>
+
+        <!-- 설정 -->
+        <section class="screen" data-screen="settings" hidden>
+          <h2 class="title">설정</h2>
+          <div class="field" style="max-width:260px">
+            <label for="rsize">라운드당 문제 수</label>
+            <input type="number" id="rsize" value="20" min="1" max="200">
+          </div>
+          <div><button class="btn primary" id="savecfg" type="button">저장</button></div>
+        </section>
+      </main>
+
+      <div class="status" id="status" hidden>
+        <span>전체 단어 <b>178</b>개</span>
+        <span>이번 세션 테스트 <b id="st-t">15</b> / 정답 <b id="st-c">11</b></span>
+      </div>
+    </div>
+
+    <!-- overlays -->
+    <div class="overlay" id="ov-nodb" hidden>
+      <div class="dialog" role="alertdialog" aria-labelledby="t-nodb">
+        <h3 id="t-nodb">해당 DB가 없습니다.</h3>
+        <div class="actions"><button class="btn primary" data-close="nodb" type="button">확인</button></div>
+      </div>
+    </div>
+    <div class="overlay" id="ov-done3" hidden>
+      <div class="dialog" role="dialog" aria-labelledby="t-done3">
+        <h3 id="t-done3"><span id="done3word" style="font-family:var(--f-word);font-size:19px"></span> 을(를) 3회 연속 맞췄어요</h3>
+        <p>해당 단어에 완료 표시를 할까요?</p>
+        <div class="actions"><button class="btn" data-close="done3-no" type="button">No</button><button class="btn primary" data-close="done3-yes" type="button">Yes</button></div>
+      </div>
+    </div>
+    <div class="overlay" id="ov-switch" hidden>
+      <div class="dialog" role="dialog" aria-labelledby="t-switch">
+        <h3 id="t-switch">DB를 전환할까요?</h3>
+        <p>현재 세션이 종료되고 새 세션이 시작됩니다.</p>
+        <div class="actions"><button class="btn" data-close="switch-no" type="button">취소</button><button class="btn primary" data-close="switch-yes" type="button">전환</button></div>
+      </div>
+    </div>
+    <div class="toast" id="toast" hidden></div>
+  </div>
+
+  <aside class="notes" id="notes" aria-live="polite"></aside>
+</div>
+
+<script>
+(function(){
+  var WORDS=[
+    {h:'capere, capiō, cēpī, captum',g:[['fassen','nehmen'],['erobern']],streak:0,done:false,wrong:true},
+    {h:'taurus',g:[['Stier']],streak:2,done:false,wrong:false},
+    {h:'gravis, e',g:[['schwer']],streak:0,done:false,wrong:true},
+    {h:'cōnsīdere, cōnsīdō, cōnsēdī, cōnsessum',g:[['sich setzen','sich niederlassen']],streak:0,done:false,wrong:true},
+    {h:'mittere, mittō, mīsī, missum',g:[['(los)lassen','schicken','werfen']],streak:0,done:false,wrong:false},
+    {h:'conicere, coniciō, coniēcī, coniectum',g:[['(zusammen)werfen','folgern','vermuten']],streak:0,done:false,wrong:true},
+    {h:'perterrēre, perterreō, perterruī, perterritum',g:[['sehr erschrecken','einschüchtern']],streak:0,done:false,wrong:false},
+    {h:'redīre, redeō, rediī, reditum',g:[['zurückgehen','zurückkehren']],streak:0,done:true,wrong:false},
+    {h:'animadvertere, animadvertō, animadvertī, animadversum m. AcI / Akk.',g:[['bemerken']],streak:0,done:false,wrong:true}
+  ];
+  var ROUND=[0,1,2,3,4];               // 데모 라운드 (실제는 pool에서 무작위 추출)
+  var $=function(s,r){return (r||document).querySelector(s)};
+  var $$=function(s,r){return Array.prototype.slice.call((r||document).querySelectorAll(s))};
+  var st={tested:15,correct:11,screen:'start',quizScreen:'idle',i:0,answered:false,rc:0,rt:0,cur:null,wrongTest:false};
+
+  /* ---------- 채점 ---------- */
+  function norm(s){return s.toLowerCase().replace(/ä/g,'ae').replace(/ö/g,'oe').replace(/ü/g,'ue').replace(/ß/g,'ss').replace(/\s+/g,' ').trim()}
+  function variants(s){return [s,s.replace(/\([^)]*\)/g,''),s.replace(/[()]/g,'')].map(norm).filter(Boolean)}
+  function grade(w,input){
+    var items=input.split(',').map(norm).filter(Boolean);
+    var hits=w.g.map(function(grp){return items.some(function(it){return grp.some(function(sy){return variants(sy).indexOf(it)>-1})})});
+    var n=hits.filter(Boolean).length;
+    return {hits:hits,n:n,kind:n===w.g.length?'perfect':(n>0?'partial':'wrong')};
+  }
+
+  /* ---------- 화면 전환 ---------- */
+  var NOTES={
+    start:['<b>언어 → DB 콤보박스 → 시작.</b> English는 “준비 중”으로 선택 불가입니다.','DB가 없으면 “해당 DB가 없습니다.” 후 이 화면으로 돌아옵니다. (상단 “시작(DB 없음)” 참고)','시작 화면에는 메뉴와 상태 바가 없습니다.'],
+    idle:['<b>Latin은 단어→뜻만 활성</b>, 나머지 라디오는 비활성(회색)입니다.','상단에 <b>현재 DB 표시와 [DB 전환]</b>이 항상 보입니다. 전환하면 세션이 새로 시작됩니다.','제안: 라운드 번호와 출제 가능 단어 수를 함께 보여줍니다. (PRD에 없는 추가 표시)'],
+    quiz:['<b>표제어는 셀 전체를 그대로</b> 표시하고 좁은 화면에서는 줄바꿈합니다.','입력창에서 Enter 또는 Submit으로 제출, 제출 후 Enter는 다음 문제입니다.','정답 줄에서 <b>뜻 묶음별로 ✓/✗ 기호와 색</b>을 함께 써서 색만으로 구분하지 않습니다.','<b>[완료 표시]는 오답이면 비활성</b>, Perfect/부분 정답이면 활성입니다.','확인 필요: 상태 바의 “정답” 수는 <b>Perfect만 집계</b>하는 것으로 가정했습니다. (부분 정답은 오답 마크)','두 번 연속 맞춘 <b>taurus</b>를 “Stier”로 맞히면 3회 연속 확인창이 뜹니다.'],
+    result:['정답 수 / 문제 수 / 정답률을 표시합니다. 별도의 완료 조건은 없습니다.'],
+    wrong:['오답 마크된 단어만 표시하며 완료된 단어는 제외합니다. Latin은 방향 선택이 단어→뜻 고정입니다.'],
+    words:['단어·뜻 수정과 완료 체크박스를 제공합니다. <b>수정</b>을 눌러 행을 편집해 보세요.','제안: 178개 목록이므로 <b>검색창과 스크롤</b>을 둡니다. (PRD에 없는 추가 기능)','노트 열은 DB에 저장만 하고 화면에는 표시하지 않습니다.'],
+    settings:['라운드당 문제 수만 조정합니다. 값은 DB별로 저장됩니다.']
+  };
+  var CHIPS=[
+    ['시작',function(){go('start')}],
+    ['시작(DB 없음)',function(){go('start');show('nodb')}],
+    ['라운드 시작 전',function(){go('idle')}],
+    ['퀴즈 진행',function(){startRound(0)}],
+    ['채점: 부분 정답',function(){startRound(0,'nehmen')}],
+    ['채점: 오답',function(){startRound(2,'leicht')}],
+    ['3회 연속 확인',function(){startRound(1,'stier')}],
+    ['라운드 결과',function(){go('result');finish(4,5)}],
+    ['오답 목록',function(){go('wrong')}],
+    ['단어 관리',function(){go('words')}],
+    ['설정',function(){go('settings')}],
+    ['DB 전환 확인',function(){go('idle');show('switch')}]
+  ];
+  function buildChips(){
+    var box=$('#chips');
+    CHIPS.forEach(function(c){
+      var b=document.createElement('button');b.type='button';b.className='chip';b.textContent=c[0];b.setAttribute('aria-pressed','false');
+      b.addEventListener('click',function(){hideAll();c[1]();$$('.chip').forEach(function(x){x.setAttribute('aria-pressed','false')});b.setAttribute('aria-pressed','true')});
+      box.appendChild(b);
+    });
+  }
+  function go(name){
+    st.screen=name;
+    $$('[data-screen]').forEach(function(s){s.hidden=s.getAttribute('data-screen')!==name});
+    var chrome=name!=='start';
+    $('#topbar').hidden=!chrome;$('#tabs').hidden=!chrome;$('#status').hidden=!chrome;
+    var tab=(name==='idle'||name==='quiz'||name==='result')?'quiz':name;
+    $$('.tab').forEach(function(t){t.setAttribute('aria-current',t.getAttribute('data-tab')===tab?'page':'false')});
+    $('#retest-banner').hidden=!(name==='idle'&&st.wrongTest);
+    $('#notes').innerHTML='<h2>이 화면에서 확인할 점</h2><ul>'+(NOTES[name]||[]).map(function(n){return '<li>'+n+'</li>'}).join('')+'</ul>';
+    if(name==='wrong')renderWrong();
+    if(name==='words')renderWords();
+    updateStatus();
+  }
+  function show(k){$('#ov-'+k).hidden=false}
+  function hideAll(){$$('.overlay').forEach(function(o){o.hidden=true});st.wrongTest=false}
+  function toast(msg){var t=$('#toast');t.textContent=msg;t.hidden=false;clearTimeout(toast.t);toast.t=setTimeout(function(){t.hidden=true},1800)}
+  function updateStatus(){$('#st-t').textContent=st.tested;$('#st-c').textContent=st.correct}
+
+  /* ---------- 퀴즈 ---------- */
+  function startRound(idx,autoAnswer){
+    st.i=idx;st.rc=0;st.rt=0;st.quizScreen='quiz';go('quiz');renderQ();
+    if(autoAnswer){$('#answer').value=autoAnswer;submit()}
+  }
+  function renderQ(){
+    var w=WORDS[ROUND[st.i]];st.cur=w;st.answered=false;
+    $('#headword').textContent=w.h;
+    $('#pcount').textContent=(st.i+1)+' / '+ROUND.length;
+    $('#pbar').style.width=(st.i/ROUND.length*100)+'%';
+    var a=$('#answer');a.value='';a.disabled=false;$('#submit').disabled=false;$('#fb').hidden=true;
+    if(st.screen==='quiz')a.focus({preventScroll:true});
+  }
+  function submit(){
+    if(st.answered)return;
+    var w=st.cur,input=$('#answer').value;
+    if(!input.trim()){toast('뜻을 입력하세요');return}
+    var r=grade(w,input);st.answered=true;
+    $('#answer').disabled=true;$('#submit').disabled=true;
+    st.tested++;st.rt++;
+    if(r.kind==='perfect'){st.correct++;st.rc++;w.streak++}else{w.streak=0;w.wrong=true}
+    var v=$('#verdict');
+    v.className='verdict v-'+r.kind;
+    v.textContent=r.kind==='perfect'?'Perfect':(r.kind==='partial'?'부분 정답 ('+r.n+'/'+w.g.length+')':'오답');
+    var line=$('#ansline');line.innerHTML='<span class="ans-label">정답</span>';
+    w.g.forEach(function(grp,k){
+      var s=document.createElement('span');s.className='grp '+(r.hits[k]?'hit':'miss');
+      var i=document.createElement('i');i.textContent=r.hits[k]?'✓':'✗';
+      s.appendChild(i);s.appendChild(document.createTextNode(grp.join(', ')));line.appendChild(s);
+    });
+    $('#fbnote').textContent=w.g.length>1?'각 색 블록이 뜻 묶음 하나입니다. 묶음 안에서는 하나만 맞아도 충족입니다.':'';
+    var d=$('#donebtn');d.disabled=(r.kind==='wrong')||w.done;d.textContent=w.done?'완료됨':'완료 표시';
+    d.title=r.kind==='wrong'?'오답일 때는 완료 표시를 할 수 없습니다':'';
+    $('#fb').hidden=false;$('#nextbtn').focus({preventScroll:true});
+    $('#pbar').style.width=((st.i+1)/ROUND.length*100)+'%';
+    updateStatus();
+    if(r.kind==='perfect'&&w.streak>=3){$('#done3word').textContent=w.h;show('done3')}
+  }
+  function next(){
+    if(!st.answered)return;
+    if(st.i+1>=ROUND.length){go('result');finish(st.rc,st.rt||ROUND.length);return}
+    st.i++;renderQ();
+  }
+  function finish(c,t){$('#rpct').textContent=Math.round(c/t*100)+'%';$('#rtext').textContent=t+'문제 중 '+c+'개 정답'}
+  function complete(w){w.done=true;w.wrong=false;var d=$('#donebtn');d.disabled=true;d.textContent='완료됨';toast('완료 처리했습니다')}
+
+  /* ---------- 오답 / 단어 관리 ---------- */
+  function meaning(w){return w.g.map(function(g){return '<span class="g">'+esc(g.join(', '))+'</span>'}).join('')}
+  function esc(s){return s.replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
+  function renderWrong(){
+    var list=WORDS.filter(function(w){return w.wrong&&!w.done});
+    $('#wrongcount').textContent='('+list.length+')';
+    $('#wrongbody').innerHTML=list.map(function(w){return '<tr><td class="w" lang="la">'+esc(w.h)+'</td><td class="m">'+meaning(w)+'</td></tr>'}).join('');
+  }
+  var editing=-1;
+  function renderWords(){
+    var q=norm($('#wfilter').value);
+    $('#wordsbody').innerHTML=WORDS.map(function(w,i){
+      if(q&&norm(w.h).indexOf(q)<0&&norm(w.g.join(' ')).indexOf(q)<0)return '';
+      if(i===editing){
+        return '<tr><td class="w"><input type="text" id="e-w" value="'+esc(w.h)+'" aria-label="단어"></td>'+
+          '<td class="m"><input type="text" id="e-m" value="'+esc(w.g.map(function(g){return g.join(', ')}).join(' | '))+'" aria-label="뜻"></td>'+
+          '<td class="c"><input type="checkbox" '+(w.done?'checked':'')+' disabled aria-label="완료"></td>'+
+          '<td style="white-space:nowrap"><button class="btn" data-save="'+i+'" type="button">저장</button> <button class="btn" data-cancel="1" type="button">취소</button></td></tr>';
+      }
+      return '<tr><td class="w" lang="la">'+esc(w.h)+(w.wrong&&!w.done?'<span class="mark">오답</span>':'')+'</td><td class="m">'+meaning(w)+'</td>'+
+        '<td class="c"><input type="checkbox" data-done="'+i+'" '+(w.done?'checked':'')+' aria-label="완료"></td>'+
+        '<td><button class="btn" data-edit="'+i+'" type="button">수정</button></td></tr>';
+    }).join('');
+  }
+
+  /* ---------- 이벤트 ---------- */
+  document.addEventListener('click',function(e){
+    var t=e.target;
+    if(t.dataset.close){
+      var k=t.dataset.close;
+      if(k==='nodb'){hideAll();go('start')}
+      if(k==='done3-yes'){hideAll();complete(st.cur)}
+      if(k==='done3-no'){hideAll()}
+      if(k==='switch-no'){hideAll()}
+      if(k==='switch-yes'){hideAll();st.tested=0;st.correct=0;go('start');toast('새 세션을 시작합니다')}
+    }
+    if(t.dataset.edit!==undefined){editing=+t.dataset.edit;renderWords();var f=$('#e-w');if(f)f.focus()}
+    if(t.dataset.cancel){editing=-1;renderWords()}
+    if(t.dataset.save!==undefined){
+      var w=WORDS[+t.dataset.save],nw=$('#e-w').value.trim(),nm=$('#e-m').value.trim();
+      if(nw&&nm){w.h=nw;w.g=nm.split('|').map(function(x){return x.split(',').map(function(y){return y.trim()}).filter(Boolean)}).filter(function(g){return g.length});toast('저장했습니다')}
+      editing=-1;renderWords();
+    }
+    if(t.dataset.done!==undefined){var w2=WORDS[+t.dataset.done];w2.done=t.checked;if(t.checked)w2.wrong=false;toast(t.checked?'완료 처리했습니다':'pool에 복귀했습니다');renderWords()}
+  });
+  $$('.tab').forEach(function(b){b.addEventListener('click',function(){
+    var k=b.getAttribute('data-tab');
+    if(k==='quiz')go(st.quizScreen==='quiz'&&st.cur?'quiz':'idle');else go(k);
+  })});
+  $('#go').addEventListener('click',function(){st.quizScreen='idle';go('idle')});
+  $('#start-round').addEventListener('click',function(){startRound(0)});
+  $('#again').addEventListener('click',function(){st.quizScreen='idle';go('idle')});
+  $('#retest').addEventListener('click',function(){st.wrongTest=true;st.quizScreen='idle';go('idle')});
+  $('#dbswitch').addEventListener('click',function(){show('switch')});
+  $('#qform').addEventListener('submit',function(e){e.preventDefault();submit()});
+  $('#nextbtn').addEventListener('click',next);
+  $('#donebtn').addEventListener('click',function(){if(st.cur&&!$('#donebtn').disabled)complete(st.cur)});
+  $('#wfilter').addEventListener('input',renderWords);
+  $('#savecfg').addEventListener('click',function(){toast('저장했습니다')});
+  document.addEventListener('keydown',function(e){
+    if(e.key==='Enter'&&st.screen==='quiz'&&st.answered&&$('#ov-done3').hidden&&e.target.tagName!=='BUTTON'){e.preventDefault();next()}
+  });
+  function setDev(m){$('#frame').classList.toggle('is-mobile',m);$('#dev-mo').setAttribute('aria-pressed',m);$('#dev-pc').setAttribute('aria-pressed',!m)}
+  $('#dev-pc').addEventListener('click',function(){setDev(false)});
+  $('#dev-mo').addEventListener('click',function(){setDev(true)});
+
+  buildChips();
+  $$('.chip')[0].setAttribute('aria-pressed','true');
+  go('start');
+})();
+</script>
+</body>
+</html>
