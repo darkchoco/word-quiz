@@ -1,6 +1,6 @@
 # Word Quiz 기술 스펙
 
-> 상태: v1.7 (확정) · 작성일: 2026-09-20 · 최종 수정: 2026-09-20  
+> 상태: v1.8 (확정) · 작성일: 2026-09-20 · 최종 수정: 2026-09-20  
 > 기준 문서: `docs/PRD.md` v1.3, `docs/word-quiz-mockup.html`(영어 UI, 컨펌 완료)  
 > 범위: **어떻게 만드는가**. 제품 요구사항은 PRD가, 작업 순서는 별도 실행 계획 문서가 다룬다.
 
@@ -555,6 +555,11 @@ Result: NOT applied. Fix the errors in the Excel file and run again.
 - **Mark done**은 판정이 `wrong`이면 비활성. 상태 바 수치는 `AnswerResult.stats`로 갱신한다.
 - 반응형: MUI 브레이크포인트 `sm`(600px) 미만에서 입력 폼을 세로 배치, 하단 상태 바는 줄바꿈 허용. 표는 가로 스크롤.
 - 검색: `shared/grading.ts`의 `normalize`로 단어와 뜻을 비교한다(대소문자·움라우트 무시).
+- **퀴즈 상태 기계(M6)**: `useQuiz`가 `loading → idle | question → feedback → question … → result`를 관리하고(`failed`는 Retry), 서버에 있는 것은 서버가 기억한다. 마운트할 때 `GET /rounds/current`로 열린 라운드의 다음 문제로 이어가고(`NO_ACTIVE_ROUND`이면 `GET /pool`로 idle), 피드백 화면은 재마운트하면 사라진다(5.3이 허용). `ROUND_IN_PROGRESS`·`POOL_EMPTY`·`ALL_DONE`은 서버가 지금 말하는 상태를 다시 불러와 보여 주고, `ALREADY_ANSWERED`·`OUT_OF_ORDER`는 `GET /rounds/current`로 다시 맞춘다. 그 밖의 오류는 `handleApiError`.
+- **포커스 규칙(M6)**: 새 문제가 뜨면 답 입력창, 제출하면 **Next**(대화상자가 열려 있는 동안은 대화상자가 갖고 닫히면 Next로 돌아온다). 제출 뒤 입력창은 읽기 전용으로 답을 그대로 보여 준다. 공백뿐인 답은 보내지 않는다(서버는 `EMPTY_INPUT`).
+- **3회 연속 확인창과 마지막 문제**: 마지막 문제라도 확인창과 Mark done은 결과 화면 **앞**에서 처리한다(`questionPosition`을 함께 보내므로 서버가 이미 끝난 라운드의 문항으로 검사). 확인창이 열려 있는 동안 Next는 동작하지 않는다.
+- **재시험 요청(M6→M7)**: Wrong 탭은 `requestRetest()`를 호출하고 Quiz 탭의 idle이 배너와 재시험의 번호·출제 가능 수를 보여 준 뒤 Start가 `mode: 'retest'`로 시작하며 요청을 소비한다(`clearRetest`). 재시험 대상이 0건이면 안내와 "Back to the quiz".
+- **표제어 글꼴**: `lang="la"`를 붙이면 EB Garamond의 로케일 대체(`locl`)가 켜져 **u가 v로 그려진다**(`captum` → `captvm`). 표제어에 `font-feature-settings: "locl" 0`을 준다(테스트가 지킨다).
 
 ---
 
@@ -828,6 +833,12 @@ node --disable-warning=ExperimentalWarning "%~dp0import.mjs" %*
 - **화면 확인**: `npm run shots`로 시작·공통 틀(PC, 390px, 다크)과 대화상자를 찍고 목업과 대조했다. 브라우저 콘솔 오류·경고 0건, 390px에서 가로 스크롤 없음.
 - **환경 관찰**: (1) 헤드리스 Chrome은 창 폭을 약 500px 아래로 줄이지 않아 휴대폰 화면은 iframe(390px)으로 찍는다. (2) 이 Chrome에서 `--blink-settings=preferredColorScheme=0`이 **다크**, `1`은 라이트다. (3) **Vite 프록시 접두사 `/api`는 페이지 모듈 `/api.ts`까지 서버로 넘겨 404가 나고 dev 화면이 비었다**(사용자가 브라우저에서 발견, 헤드리스 콘솔에는 오류가 안 보였다). 접두사를 `/api/`로 고치고 `test/vite-config.test.ts`가 지킨다. 스크린샷은 계속 빌드 결과로 찍는다(서버가 실제로 서빙하는 모습). (4) jsdom에서는 열린 포커스가 없으면 MUI 포커스 트랩이 대화상자를 닫을 때 `document`에 포커스를 주려다 오류가 나서, 테스트 헬퍼가 포커스된 버튼을 먼저 만든다(실제 브라우저에서는 대화상자를 연 버튼이 그 역할).
 - **번들**: JS 478KB(gzip 147KB), `dist/public` 약 930KB(폰트 조각 포함). M8 배포 zip 크기에 반영한다.
+
+### 14.9 M6 퀴즈 흐름 확인 (2026-09-20)
+- **자동 테스트**: 클라이언트 42개 추가(전체 969개). 결함 주입 24가지 중 22가지 즉시 검출, 나머지 2건은 약한 테스트(진행 막대 값, 확인창이 열린 동안의 Next)라 보강해서 검출됐다. 살아남은 것 중 "공백 답 전송"은 폼이 이미 막는 이중 방어라 그대로 둔다.
+- **발견한 문제**: (1) `lang="la"` 때문에 u가 v로 그려졌다(스크린샷의 `capvt`로 발견, 위 규칙). (2) 갤러리에서 결과 패널의 최소 높이가 뷰포트를 따라가 과하게 컸다.
+- **화면 확인**: 실제 서버에 라운드를 만들어 두고 페이지를 열어 이어서 풀기(PC·390px·다크)와 갤러리(idle, 재시험, 문제, 긴 표제어, Perfect/Partial/Wrong, 결과, 빈 상태, 확인창)를 찍었고 콘솔 오류 0건, 390px 가로 스크롤 없음. 본문 배경을 목업처럼 흰 바탕으로 맞췄다.
+- **남은 것**: 실제 폰에서의 Enter 제출·자동 고침은 M9 수동 체크리스트.
 
 ---
 

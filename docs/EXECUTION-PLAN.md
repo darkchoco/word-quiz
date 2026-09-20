@@ -1,7 +1,7 @@
 # Word Quiz 실행 계획
 
-> 상태: v1.7 (진행 중 · M0~M5 완료, M5 UI 컨펌 대기) · 작성일: 2026-09-20  
-> 기준 문서: `docs/PRD.md` v1.3, `docs/TECH-SPEC.md` v1.7, `docs/word-quiz-mockup.html`  
+> 상태: v1.8 (진행 중 · M0~M6 완료, M6 UI 컨펌 대기) · 작성일: 2026-09-20  
+> 기준 문서: `docs/PRD.md` v1.3, `docs/TECH-SPEC.md` v1.8, `docs/word-quiz-mockup.html`  
 > 범위: **무엇을 어떤 순서로 만들고 어떻게 확인하는가**. 요구사항은 PRD, 설계는 기술 스펙이 다룬다.
 
 ---
@@ -156,6 +156,12 @@
 | 완료 기준 | ① Latin은 "Word → Meaning"만 활성, 나머지 라디오 비활성 ② 라운드 번호·출제 가능 수 표시 ③ Enter/Submit 제출 → 입력창 아래 정답과 판정 배지(Perfect / Partial / Wrong) 표시 ④ 정답 줄은 묶음마다 색 + ✓/✗ ⑤ Mark done은 Wrong이면 비활성 ⑥ 제출 후 Next 버튼에 포커스가 가서 Enter로 다음 문제 ⑦ 3회 연속 Perfect에서 확인창, Yes면 완료·No면 유지 ⑧ 라운드 종료 화면(`N of M correct`, 정답률) ⑨ 새로고침해도 진행 중이던 라운드가 이어짐 ⑩ pool 없음·전 단어 완료 안내 ⑪ 입력창에 `autoCapitalize`·`autoCorrect` 끔, 표제어 `lang="la"` ⑫ 상태 바가 제출마다 갱신 |
 | 검증 | 브라우저 수동 시나리오(실제 샘플 import 후): 부분 정답, 오답, 괄호 정답, 3회 연속 Perfect, 새로고침. 390px 폭 확인. `npm run typecheck` |
 | 커밋 제안 | `feat: Add quiz start and question panels` / `feat: Add answer feedback and done confirmation` / `feat: Add round result and empty states` |
+
+**M6 결과 (2026-09-20)**: 완료 기준 ①~⑫ 충족. 클라이언트 테스트 42개 추가(**전체 969개**), 결함 주입 24가지 모두 검출(2건은 테스트 보강 후), `smoke:server` 51/51 유지, 브라우저 콘솔 오류 0건, 390px 가로 스크롤 없음. 서버 변경 없음.
+- **발견·수정**: `lang="la"`가 EB Garamond에서 u를 v로 그려 `captum`이 `captvm`으로 보였다 → 표제어에 `locl` 끔.
+- **계획 대비 변경**: 앱 컨텍스트에 `updateStats`(상태 바), `retestRequested`/`requestRetest`/`clearRetest`(M7의 Wrong 탭이 호출)를 추가했다. 목업의 회색 배경 대신 본문을 흰 바탕으로 맞췄다.
+- **목업에 없는 문구(컨펌 요청 대상)**: "There are no wrong words to retest." + "Back to the quiz", "No words are available for this round.", "All words are done" / "All words are marked done. Nothing is left to practice.", "The quiz could not be loaded." + Retry.
+- **UI 컨펌 요청**: `npm run dev:seed` → `http://localhost:35101`에서 Start → 문제 풀이(Enter 제출, Next에서 Enter) → 결과까지 눌러 보고, 상태별 화면은 `#/dev`, 확인창은 `#/dev/done3`. 3회 연속 확인창은 같은 단어를 세 라운드 연속 Perfect로 맞춰야 나오므로 갤러리로 확인한다.
 
 ### M7. 클라이언트 오답 · 단어 관리 · 설정 (M)
 | 구분 | 내용 |
