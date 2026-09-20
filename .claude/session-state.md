@@ -2,7 +2,7 @@
 
 ## 1. 날짜 / 주제
 - 저장일: 2026-09-20 (작업 진행: 2026-09-18 ~ 09-20)
-- 주제: 문서 단계 완료(PRD v1.3, TECH-SPEC v1.4, EXECUTION-PLAN v1.4). **M0·M1·M2 완료** → 다음은 **M3(Import CLI `src/cli`)**
+- 주제: 문서 단계 완료(PRD v1.3, TECH-SPEC v1.5, EXECUTION-PLAN v1.5). **M0~M3 완료** → 다음은 **M4(서버 서비스와 API)**
 
 ## 2. 완료한 작업
 - [x] `docs/PRD.md` v1.2 확정 (결정 로그 D1~D36, 미결 사항 없음)
@@ -19,7 +19,8 @@
 - [x] **M0 완료**: 도구 체인(TS 7.0.2, vitest 5.0.1, esbuild 0.28.2, @types/node 22.20.4, read-excel-file 9.3.10 정확 고정), `.gitattributes`(CRLF), `src/server/paths.ts`(`appHome`), 스모크 서버·CLI, `scripts/build.mjs`, `scripts/win-smoke.sh`. `npm run smoke:win` 20/20 통과 (Windows node.exe 24.14.0, `C:\WordQuiz-dev`)
 - [x] **M1 완료**: `src/shared/{api,grading,scheduling,meanings}.ts`, 테스트 228개(api 3 / grading 173 / scheduling 17 / meanings 35), 픽스처 `test/fixtures/tricky-meanings.json`(실제 단어장 19행 발췌, 기대값은 손으로 작성). 결함 주입(mutation) 검증으로 테스트가 스파이크 결함을 실제로 잡는 것을 확인
 - [x] **M2 완료**: `src/server/{errors.ts,db/{migrations,transaction,open,names,catalog,sessions,queries}.ts}`, 테스트 136개(전체 369개/13파일), `npm run smoke:win-db`(같은 검사를 Linux와 Windows node.exe에서 실행) 양쪽 통과. 결함 주입 20가지 모두 검출
-- [ ] M3~M9 미구현 (EXECUTION-PLAN 진행 현황 표 참고)
+- [x] **M3 완료**: `src/cli/{xlsx,validate,plan,report,apply,args,run,errors,index}.ts`, `release/import.bat`(CRLF), 테스트 154개 추가(전체 524개/21파일), `npm run smoke:import` Linux·Windows 63/63(실제 샘플 178단어). 결함 주입 20여 가지 검출
+- [ ] M4~M9 미구현 (EXECUTION-PLAN 진행 현황 표 참고)
 
 ## 3. 결정과 이유 (상세는 PRD 8.1 D1~D36, TECH-SPEC 1장 T1~T12)
 | 결정 | 이유 |
@@ -37,6 +38,8 @@
 | 상태 바 정답 수는 Perfect만 집계, 목업 제안 3개 유지 (D34) | "그 외에는 모두 오케이" |
 | `splitTop`은 **짝이 맞는 괄호만** 보호하고 짝 없는 괄호는 일반 문자. `grade([])`는 RangeError. `validateMeanings`는 `parse(format(g))` 왕복 불변을 핵심 기준으로 검증 (M1) | 짝 없는 `(`가 뒤의 쉼표를 삼키는 것을 막고, 저장한 뜻이 편집 화면에서 그대로 보이게 하기 위해 |
 | `createDatabase`는 **모든 OS에서** 대소문자만 다른 이름을 거부. `openDatabase`의 세션 복구는 옵트인(서버만). 오류 변환은 `errcode`가 아니라 메시지 패턴. 트랜잭션은 중첩 불가(`savepoint` 사용) (M2) | Windows는 `Latin.db` 뒤에 `latin.db`를 쓰면 같은 파일을 덮어씀(실측). 최소 Node 22.13에 없을 수 있는 API(`errcode`, `isTransaction`)를 피함 |
+| 백업은 파일 복사가 아니라 **`VACUUM INTO`**(대상이 있으면 실패, 트랜잭션 밖에서). import는 변경 0건이면 DB를 열지도 백업하지도 않음. import는 `recoverSessions`를 켜지 않음. 종료 코드 0 정상(경고만 있어도) / 1 파일 오류 / 2 사용법·파일·DB 문제. 리포트는 콘솔과 파일이 같은 내용, `Missing in Excel`은 30개까지만 나열 (M3) | 서버가 쓰는 중에도 일관된 스냅샷, 서버 실행 중에도 안전한 import, 여러 파일 merge 시 리포트 폭주 방지 |
+| `write-excel-file`은 쓰지 않고 이미 설치된 `fflate`(0.8.3, devDependency로 고정)로 테스트 xlsx를 만든다 (M3) | 새 패키지 없이 충분함, M8 패키징에서도 사용 |
 | 서버 `0.0.0.0` 바인딩 + Content-Type/Host 검사, `--local-only` 옵션 (T·9장) | 모바일 접속 요구 + 무인증 LAN 위험 완화 |
 | 커밋은 주제별 분리, 메시지를 먼저 보여주고 확인 | 사용자 요청 + 프로젝트 규칙 |
 | 이번 범위는 PC 서버 + 같은 네트워크 휴대폰 접속. 휴대폰 단독 실행은 나중에 필요하면 (D37). **향후 홈 네트워크 별도 서버로 이전 계획** | 사용자 결정. 그래서 허용 Host를 설정으로 추가 가능하게 함(T15, `nas.local` 등), 인증은 그때 검토 (TECH-SPEC 15장) |
@@ -55,6 +58,12 @@
 - **Windows에서 `SIGTERM` 종료를 자동 검증하는 계획**: Windows는 강제 종료만 가능해 핸들러가 안 돌아서 폐기. 강제 종료 후 복구 검증으로 대체
 - **`String.replace(a, b)`에 `$` 포함 문자열 사용**: 치환 문자열의 `` $` ``가 특수 패턴으로 해석되어 문서 앞부분이 통째로 중복 삽입됨(TECH-SPEC 정규식 `...\.db$` 때문). 문서 일괄 치환은 `s.replace(a, () => b)` 함수 형태로 하고, 편집 후 **제목 중복(`uniq -d`)** 을 확인할 것
 - **"실행 중 서버는 `server.mjs`를 덮어쓸 수 없다(EBUSY)" 가정**: 실제로 확인하니 틀림. 스크립트는 안 잠기고(덮어쓰기 허용, 옛 코드가 메모리에 남음), 열린 SQLite DB만 삭제·이름 변경이 차단되고 복사는 허용됨. 가정은 실제 실험으로 검증할 것
+- **테스트가 `word` 테이블만 확인**: "사라진 단어를 삭제하지 않는다" 테스트가 진행 상태(`word_progress`) 행 삭제를 못 잡음(그 단어는 pool 조회에서 조용히 빠짐). **결함 주입에서 안 잡힌 항목이 있으면 테스트 공백이라는 신호** — 진행 상태·내용까지 확인하도록 보강
+- **결함 주입 SQL을 두 문장으로 넣음**: `prepare`가 두 번째 문장을 무시해 결함이 주입되지 않았는데 "테스트가 통과"로 오해할 뻔함. 주입 후 **파일이 실제로 바뀌었는지, 동작이 바뀌었는지** 확인할 것
+- **이름 충돌 안내에 사용자가 입력한 이름 사용**: `--new-db Latin`이 `latin.db`와 충돌할 때 `--db Latin.db`를 안내(대소문자 환경에서 틀림). 디스크의 실제 이름(`findExistingDbName`)을 쓸 것
+- **stdout을 `| head`로 닫으면 EPIPE 크래시**: 진입점에서 stdout의 EPIPE를 무시. WSL에서 `node.exe ... | head`의 종료 코드 141은 WSL 중계 프로세스의 SIGPIPE이므로 프로그램의 종료 코드로 해석하지 말 것
+- **스모크 스크립트가 서버 스모크의 `smoke.db`와 같은 이름을 `--new-db`로 사용**: CLI가 충돌을 정확히 거부한 것(스크립트의 실수). 검증 스크립트끼리 리소스 이름이 겹치지 않게 할 것
+- **`smoke:win`의 "포트 사용 중" 검사가 한 번 일시 실패**(재실행 2회 통과). 원인 미확정. 또 나오면 조사할 것
 - **`createDatabase`의 대소문자 검사를 파일시스템(`wx`)에만 맡김**: Windows에서는 막히지만 Linux/WSL에서는 `latin.db`를 `Latin.db`와 다른 파일로 만들어 버림. `smoke:win-db`를 **Linux에서도 돌려서** 발견. 검사를 `createDatabase` 안(`dbNameExists`)으로 이동. **플랫폼 의존 동작은 양쪽 OS에서 같은 검사를 돌려 확인할 것**
 - **테스트 기대값 산수 실수**: pool 재시험 테스트에서 기대값을 잘못 셈(구현은 옳았음). 실패하면 구현과 기대값 중 어느 쪽이 틀렸는지 먼저 따져볼 것
 - **WSL `curl`로 Windows 서버 접속**: `localhost`로는 안 됨. `curl.exe` 사용
@@ -62,11 +71,10 @@
 - **`data/latin_wortschatz.xlsx`가 한 번 사라졌었음**(원인 불명, 사용자가 다시 복사). 구현·테스트가 이 파일에 의존하면 안 됨. 테스트 픽스처는 저장소 안에 별도로 둘 것 (TECH-SPEC 10장)
 
 ## 5. 다음 세션 시작 시 할 일
-1. `git log --oneline`과 `git status`로 M2 커밋 여부를 확인한다. 미커밋이면 사용자에게 커밋 메시지를 먼저 보여주고 진행한다
-2. **해결됨**: `quō?` 행 뜻은 `wohin?, wo?`가 맞다고 사용자가 확인. 샘플 `data/latin_wortschatz.xlsx`(untracked)의 B132를 직접 고쳤고(전후 비교로 다른 셀 무변경 확인, 압축 무결성 OK), 사용자 본인의 PRD용 파일은 사용자가 직접 수정. 픽스처 132행도 반영. (M3 종단 검증은 수정된 샘플로 진행)
-3. **M3(Import CLI)** 를 plan mode로 시작한다: `src/cli/{xlsx,validate,plan,report,index}.ts`, `apply`(백업 + 한 트랜잭션), `release/import.bat`, `write-excel-file` 개발 의존성 추가(테스트 픽스처 생성용, 버전 정확히 고정). 완료 기준·종단 검증은 EXECUTION-PLAN M3, 규칙은 TECH-SPEC 6장. **M2에서 재사용**: `createDatabase`(대소문자 무시 이름 거부 포함), `openDatabase({readOnly})`, `dbNameExists`, `insertWord`(표제어 trim+NFC 저장), `transaction`/`savepoint`, `AppError`. **아직 없는 것**: `updateWord`(merge의 뜻·노트 갱신). CLI는 `recoverSessions`를 켜지 말 것. 마일스톤 절차는 plan mode → 구현 → `npm run typecheck` → 단일 테스트 → 결함 주입으로 테스트 검증 → 커밋 메시지 사전 확인 → 커밋
-4. **Windows 자동 검증 시 주의**: WSL의 `curl`은 Windows `localhost`에 닿지 않으므로 `curl.exe`를 쓴다. `Stop-Process -Force`는 시그널 핸들러를 실행하지 않아 `SIGTERM` 정상 종료는 자동 검증 불가(대신 강제 종료 후 재기동 시 `last_seen_at` 보정을 검증). 테스트로 띄운 `node.exe`는 `CommandLine`으로 **자기가 띄운 것만** 종료할 것. `cmd.exe`는 UNC 경로에서 실행 불가라 `/mnt/c/...`에서 실행. 이 PC는 Node 24.14라 최소 버전 22.13은 검증 불가
-5. 알아둘 것: xlsx 라이브러리 `read-excel-file`은 9.3.10으로 스파이크했음. 버전 고정할 것. 스파이크 코드는 스크래치패드에만 있어 사라졌음(TECH-SPEC 14장에 결과만 있음)
+1. `git log --oneline`과 `git status`로 M3 커밋 여부를 확인한다. 미커밋이면 사용자에게 커밋 메시지를 먼저 보여주고 진행한다
+2. **M4(서버 서비스와 API)** 를 plan mode로 시작한다: `src/server/{services,routes,app.ts,index.ts}`, 미들웨어(Host 검사·Content-Type·100KB 제한), 정적 파일, 종료 시그널(`SIGINT/SIGTERM/SIGHUP/SIGBREAK`), `server.lock`, 허용 Host 설정(`WORDQUIZ_ALLOWED_HOSTS`, T15), `--local-only`, `EADDRINUSE` 처리. **의존성 추가**: `express`(5)를 정확한 버전으로 고정하고 M0의 스모크용 `src/server/index.ts`(HTTP + `node:sqlite`)를 교체한다. 완료 기준은 EXECUTION-PLAN M4, 규칙은 TECH-SPEC 3.5·4·5·9장. **재사용**: M1 `grade`·`applyResult`·`markDone`·`unmarkDone`·`ERROR_STATUS`, M2 `openDatabase({recoverSessions:true})`(서버만)·`resolveDatabase`·`listDatabases`·`startSession/touchSession/endSession`·`pickPool/countPool/nextRoundNumber`·`sessionStats`·`get/setQuestionsPerRound`·`getProgress/saveProgress`·`insertWord`·`transaction/savepoint`, M3 `getAllWords`. **아직 없는 것**: 표제어까지 고치는 `updateWord`(PATCH /words/:id용, 중복 표제어는 `HEADWORD_EXISTS`), 라운드·문제 생성/제출 쿼리(`round`, `round_question`), 오답 목록 조회. **핵심 규칙**: 제출은 한 트랜잭션(채점 → `round_question` → `word_progress` → 마지막 문제면 `round.ended_at`), 3회 이상 연속 Perfect는 `askDone`이고 "No" 결과(N+3)를 즉시 적용(T7). 다중 라운드 시나리오 테스트(N+2/N+3, askDone, 재시험, 완료·해제)와 실제 SIGTERM 통합 테스트가 완료 기준. 마일스톤 절차는 plan mode → 구현 → `npm run typecheck` → 단일 테스트 → **결함 주입으로 테스트 검증** → 커밋 메시지 사전 확인 → 커밋
+3. **Windows 자동 검증 시 주의**: WSL의 `curl`은 Windows `localhost`에 닿지 않으므로 `curl.exe`를 쓴다. `Stop-Process -Force`는 시그널 핸들러를 실행하지 않아 `SIGTERM` 정상 종료는 자동 검증 불가(대신 강제 종료 후 재기동 시 `last_seen_at` 보정을 검증). 테스트로 띄운 `node.exe`는 `CommandLine`으로 **자기가 띄운 것만** 종료할 것. `cmd.exe`는 UNC 경로에서 실행 불가라 `/mnt/c/...`에서 실행. 이 PC는 Node 24.14라 최소 버전 22.13은 검증 불가
+4. 알아둘 것: xlsx 라이브러리 `read-excel-file`은 9.3.10으로 스파이크했음. 버전 고정할 것. 스파이크 코드는 스크래치패드에만 있어 사라졌음(TECH-SPEC 14장에 결과만 있음)
 
 ## 프로젝트 규칙 (`prompts/PRD-instruction.md`)
 - Conventional Commits (`feat, fix, docs, style, refactor, test, chore`), 예: `docs: Create PRD`
@@ -84,6 +92,6 @@
 - `prompts/PRD-instruction.md`, `prompts/req_prd.md` — 원본 요구사항 지침
 - `.claude/session-state.md` — 이 파일 / `.claude/commands/handoff.md` — 이 저장 명령
 - 메모리: `/home/ikhoon/.claude/projects/-home-ikhoon-lab-word-quiz/memory/` (`feedback_docs_in_korean`, `project_word_quiz_workflow`)
-- 코드: `src/server/errors.ts`, `src/server/db/`, `test/server/`, `test/support/`, `scripts/win-db-check.sh`, `src/shared/`(api, grading, scheduling, meanings), `test/shared/`, `test/fixtures/tricky-meanings.json`, `package.json`, `tsconfig.*.json`, `vitest.config.ts`, `src/server/paths.ts`, `src/server/index.ts`(스모크용), `src/cli/index.ts`(스모크용), `test/smoke.test.ts`, `scripts/build.mjs`, `scripts/win-smoke.sh`
-- 검증 명령: `npm run typecheck` / `npm test -- <이름>` / `npm run build` / `npm run smoke:win` / `npm run smoke:win-db`
+- 코드: `src/cli/`, `test/cli/`, `release/import.bat`, `scripts/import-e2e.sh`, `src/server/errors.ts`, `src/server/db/`, `test/server/`, `test/support/`, `scripts/win-db-check.sh`, `src/shared/`(api, grading, scheduling, meanings), `test/shared/`, `test/fixtures/tricky-meanings.json`, `package.json`, `tsconfig.*.json`, `vitest.config.ts`, `src/server/paths.ts`, `src/server/index.ts`(스모크용), `src/cli/index.ts`(스모크용), `test/smoke.test.ts`, `scripts/build.mjs`, `scripts/win-smoke.sh`
+- 검증 명령: `npm run typecheck` / `npm test -- <이름>` / `npm run build` / `npm run smoke:win` / `npm run smoke:win-db` / `npm run smoke:import`
 - (참고) Artifact 링크 https://claude.ai/artifact/Gqn1G2DA4wXmBB4dsMrf6E — 옛 한국어 UI 버전, 사용자가 열지 못함. 기준 아님
