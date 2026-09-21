@@ -2,8 +2,8 @@ import { useState } from 'react';
 import { Box } from '@mui/material';
 import { useApp } from '../app-context';
 import { useHashRoute } from '../hooks/useHashRoute';
-import { Placeholder } from './Placeholder';
 import { QuizPage } from './QuizPage';
+import { SettingsPage } from './SettingsPage';
 import { StatusBar } from './StatusBar';
 import { SwitchDbDialog } from './SwitchDbDialog';
 import { TabsBar } from './TabsBar';
@@ -39,7 +39,7 @@ export function Shell() {
       <TabsBar active={tab} onChange={setTab} />
       <Box component="main" sx={{ flex: 1, bgcolor: 'background.paper' }}>
         <Box sx={{ width: '100%', maxWidth: 960, mx: 'auto' }}>
-          {tab === 'quiz' ? <QuizPage /> : tab === 'wrong' ? <WrongPage onRetest={retest} /> : tab === 'words' ? <WordsPage /> : <Placeholder tab={tab} />}
+          {tab === 'quiz' ? <QuizPage /> : tab === 'wrong' ? <WrongPage onRetest={retest} /> : tab === 'words' ? <WordsPage /> : <SettingsPage />}
         </Box>
       </Box>
       <StatusBar stats={session.stats} />
