@@ -1,8 +1,8 @@
 # Session State — Word Quiz
 
 ## 1. 날짜 / 주제
-- 저장일: 2026-09-21 (작업 진행: 2026-09-18 ~ 09-21)
-- 주제: 문서 v1.8(PRD v1.4, TECH-SPEC v1.8, EXECUTION-PLAN v1.8). **M0~M7 구현·커밋 완료(브랜치 `main`, HEAD `24d98fd` + 이 파일 커밋). M5·M6·M7 사용자 UI 컨펌 모두 완료** → 다음은 **M8(번들·패키징·배포)을 plan mode로 시작**
+- 저장일: 2026-09-22 (작업 진행: 2026-09-18 ~ 09-22)
+- 주제: 문서 v1.8(PRD v1.4, TECH-SPEC v1.8, EXECUTION-PLAN v1.8). **M0~M7 완료·UI 컨펌 완료. M8(번들·패키징·배포) 진행 중: 커밋 3개 완료(HEAD `41afc79` + 이 파일 커밋), 남은 것은 종단 검증 `smoke:package`와 문서** (브랜치 `main`)
 
 ## 2. 완료한 작업
 - [x] `docs/PRD.md` v1.2 확정 (결정 로그 D1~D36, 미결 사항 없음)
@@ -29,7 +29,13 @@
 - [x] **UI 글꼴을 Noto Sans KR로 변경**(사용자 요청, 커밋 `219efc1`): `@fontsource/noto-sans-kr@5.3.0`(정확 고정), `fonts.ts`에 latin·korean 400/500, `theme.ts`의 `UI_FONT`. 단어·로고는 EB Garamond, 숫자·코드는 IBM Plex Mono 그대로. 한글 서브셋이 굵기당 약 530KB라 `dist`가 2.4MB → 5.1MB
 - [x] **M7 구현·커밋 완료** (커밋 6개: `d9742e7` 오답 화면 / `ba6e938` 단어 관리 / `2ae3192` 설정 / `b86be32` 휴대폰 표 수정 / `1374319` 갤러리·스크린샷 / `24d98fd` 문서). `src/client/components/{WrongPage,WrongPanel,WordsPage,WordsPanel,SettingsPage,SettingsPanel,TableFrame,MeaningCell}.tsx`, `Placeholder.tsx` 삭제, `Shell`이 세 탭 연결(`Retest wrong only` → `requestRetest()` + `#/quiz`). 테스트 37개 추가(전체 **1006개/45파일**), 결함 주입 22가지 모두 검출, `smoke:server` 51/51, 콘솔 오류 0건. 서버·shared 변경 없음. 실제 서버로 확인: 뜻 수정 직후 새 뜻으로 Perfect, 재시작 후 뜻·문제 수 유지. 문서(TECH-SPEC 7.1·7.2·14.10, EXECUTION-PLAN 진행표·M7 결과) 갱신 완료
 - [x] **M7 사용자 전체 UI 컨펌 완료**(2026-09-21, "UI 컨펌 오케이")
-- [ ] M8~M9 미구현 (`release/start.bat`, `package`·`deploy` 스크립트, `README.md` 없음. EXECUTION-PLAN M8·M9 참고)
+- [x] **M8 계획 승인**(plan mode, 사용자 승인). 계획서 원문은 `~/.claude/plans/calm-leaping-firefly.md`(저장소 밖이라 사라질 수 있음 — 요점은 아래와 5장에 있음)
+- [x] **M8 커밋 3개 완료** (전부 typecheck·테스트 통과, 전체 **1063개/49파일**):
+  - `52f0f3a feat: Add start.bat launcher`: `release/start.bat`(TECH-SPEC 8.2 + `%*` 전달, CRLF·BOM 없음), `test/release/start-bat.test.ts`(20개, 버전 검사 조각을 `vm`+가짜 `process`로 실행해 22.12.0 거부·22.13.0 통과 확인), `vitest.config.ts` include에 `test/release/**`. 결함 주입 8가지 검출
+  - `eb69c98 feat: Add production build`: `scripts/lib/release.mjs`(`toCrlf`, `BATCH_FILES`·`BUNDLE_FILES`·`PROGRAM_FILES`), `build.mjs`가 `release/*.bat`을 CRLF·BOM 없음으로 **`dist/`에 기록**(소스가 LF+BOM이어도 결과 정상), `release-lib.test.ts`(11개). 결함 주입 5가지 검출
+  - `41afc79 feat: Add package and deploy scripts`: `scripts/package.mjs`(→ `release/WordQuiz.zip`, 실제 3.68MB·27파일), `scripts/deploy.mjs`, `lib/release.mjs`에 `collectRelease`·`entryData`·`readLock`·`isInside`·`ReleaseError`, `package.json`의 `package`·`deploy` 스크립트, `test/release/{package,deploy}.test.ts`(26개), `test/support/release.ts`. 결함 주입 12가지 중 11가지 검출(1건은 죽은 코드라 삭제)
+- [ ] **M8 남은 일**: ① `scripts/package-e2e.sh` + `npm run smoke:package`(5장 참고) ② 회귀 `smoke:server`·`smoke:win`·`smoke:win-db`·`smoke:import` ③ 문서 갱신 + `docs: Record M8 results` 커밋 ④ (사용자 확인 없이 끝나는 마일스톤이지만 결과를 보고)
+- [ ] M9 미구현 (Windows 자동 검증 전 항목, 사용자 수동 체크리스트, 추적표 확정, `README.md`, 승인 후 실제 `C:\WordQuiz` 배포)
 
 ## 3. 결정과 이유 (상세는 PRD 8.1 D1~D36, TECH-SPEC 1장 T1~T12)
 | 결정 | 이유 |
@@ -61,6 +67,12 @@
 | **편집 중인 행은 `colSpan={4}` 셀 하나**에 입력창을 줄바꿈해 놓음(목업의 열 정렬과 다름) (M7) | 휴대폰에서 입력창이 좁아 쓸 수 없었음. 데스크톱은 한 줄 |
 | 좁은 화면(600px 미만)에서 표의 여백·글자·버튼·체크박스를 줄여 **Done·Edit 열이 화면 안에** 들어오게 함 (M7) | 390px에서 옆으로 스크롤해야 Edit이 보였음 |
 | 저장 성공 **토스트는 넣지 않음**(설정만 "Saved" 문구), 설정은 정수 정규식 + 1~200 검사 (M7) | 저장하면 표가 바로 바뀜. 필요하다고 하면 `App`의 Snackbar를 `severity` 지원하도록 확장(작음) |
+| **`dist/`가 곧 배포 폴더**: `build.mjs`가 `.bat`도 `dist/`에 쓰고, `package`·`deploy`는 `dist/`만 읽음 (M8) | 두 스크립트가 같은 파일 목록을 쓰게 하고 `.bat`의 CRLF 변환을 한 곳(`toCrlf`)에 둠. 기존 스모크는 `dist/*.mjs`만 복사해 영향 없음 |
+| `start.bat`은 TECH-SPEC 8.2에 **`%*`(인자 전달)** 를 추가 (M8) | `start.bat --local-only`·`--port`를 쓸 수 있고, Windows 자동 검증이 `--no-open`을 넘겨야 함 |
+| zip은 **루트에 평평하게**(`start.bat`, `import.bat`, `server.mjs`, `import.mjs`, `public/…`), `data`·`reports`·`server.lock`·`node_modules` 제외 (M8) | TECH-SPEC 8.1 |
+| `deploy`는 프로그램 파일 4개 + `public/`만 교체(`public/`은 통째로 삭제 후 복사), **`server.lock`이 있으면 종료 코드 1로 중단**(`--force`로만 진행, lock은 그대로), 빌드 불완전·대상과 원본이 서로 포함되면 종료 코드 2. 읽을 수 없는 lock도 중단 (M8) | T16, 옛 해시 파일 잔류·소스 폴더 삭제·실행 중 서버와 새 `public/` 불일치 방지 |
+| M8 커밋 순서를 **start.bat → build → package/deploy**로 바꿈 (EXECUTION-PLAN은 build가 먼저) | build가 `start.bat`을 복사하므로 의존 순서 |
+| 이번 마일스톤의 모든 검증은 **임시 폴더 또는 `C:\WordQuiz-dev`** 에서만. 실제 `C:\WordQuiz` 배포는 **M9에서 사용자 승인 후** | 사용자 `data\` 보호 |
 | 커밋은 주제별 분리, 메시지를 먼저 보여주고 확인 | 사용자 요청 + 프로젝트 규칙 |
 | 이번 범위는 PC 서버 + 같은 네트워크 휴대폰 접속. 휴대폰 단독 실행은 나중에 필요하면 (D37). **향후 홈 네트워크 별도 서버로 이전 계획** | 사용자 결정. 그래서 허용 Host를 설정으로 추가 가능하게 함(T15, `nas.local` 등), 인증은 그때 검토 (TECH-SPEC 15장) |
 | DB 이름 대소문자 무시 중복 판정(T13), `.bat` CRLF·BOM 없음(T14), `server.lock`으로 실행 중 deploy 차단(T16) | Windows/WSL 차이 |
@@ -102,16 +114,29 @@
 - **`node -e '…'`에 따옴표가 많은 한글 문서 치환 스크립트를 인라인으로 넣음**: 따옴표 충돌로 문법 오류(수정은 하나도 안 됨). 긴 치환은 **스크래치패드 `.cjs` 파일**로 쓰고, 치환 문자열은 함수 형태(`() => b`)로
 - **스크린샷 자르기 도구 없음**(ImageMagick·sharp 없음, `file`도 없음): 긴 갤러리를 읽으면 축소되어 안 보임 → 상태별 **갤러리 경로를 따로**(`#/dev/m7`, `#/dev/words-edit`) 만들어 작은 크기로 찍음
 - **`npx prettier --check`**: 저장소에 prettier 설정이 없어 기존 파일도 경고. `--write`로 서식을 바꾸지 말 것
+- **셸 명령에 `>nul`을 넣으면 `/dev/null`로 바뀌어 파일에 들어감**: `node -e '...'` 안의 `where node >nul 2>nul`이 `start.bat`에 `>/dev/null`로 기록됨(`od -c`로 발견). **`nul`이 들어가는 파일은 셸을 거치지 않는 Write 도구로 쓰거나**, `"n"+"ul"`처럼 조합해서 쓰고 바이트로 확인할 것
+- **`deploy`의 `mkdirSync(target)`가 죽은 코드**: 지워도 결과가 같았음(파일 쓸 때 상위 폴더를 만들기 때문). **결함 주입에서 살아남은 항목은 테스트 공백이거나 죽은 코드** — 어느 쪽인지 먼저 판단
+- **`process.env.DEPLOY_DIR ?? 기본값`**: 빈 문자열이면 `path.resolve('')` = 현재 폴더가 됨. 빈 값도 "없음"으로 보려면 `||`
+- **fflate `zipSync`에 `mtime: 0`**: 1980년 이전 날짜라 오류. 날짜는 지정하지 말 것(현재 시각 기본값)
+- **`.mjs` 스크립트를 테스트에서 정적 import**: 타입 설정이 없어 문제가 됨 → `await import(pathToFileURL(...).href)`(동적)와 `spawnSync(process.execPath, [script, ...])`(블랙박스)를 사용
+- **테스트가 `--dir` 없이 `deploy`를 실행하면 기본값 `/mnt/c/WordQuiz`(실제 설치 폴더)가 대상이 될 수 있음**: 테스트는 항상 `--dir`/`DEPLOY_DIR`을 지정하고 `runScript`가 `DEPLOY_DIR`을 비움
 - **`data/latin_wortschatz.xlsx`가 한 번 사라졌었음**(원인 불명, 사용자가 다시 복사). 구현·테스트가 이 파일에 의존하면 안 됨. 테스트 픽스처는 저장소 안에 별도로 둘 것 (TECH-SPEC 10장)
 
 ## 5. 다음 세션 시작 시 할 일
-1. `git status`/`git log --oneline -8`로 상태를 확인하고 `npm run typecheck && npm test`(1006개/45파일)를 돌린다. 브랜치는 `main`(origin push는 아직 안 함, 사용자에게 물어볼 것). `data/`·`docs/ui-checks/`만 untracked면 정상
-2. **M8(번들 · 패키징 · 배포)**: plan mode로 시작. EXECUTION-PLAN M8을 읽고 시작한다. 지금 있는 것은 `scripts/build.mjs`(esbuild + `vite build`, 이미 동작), `release/import.bat`뿐이다. **없는 것**: `release/start.bat`(`chcp 65001`, Node 22.13 미만 안내, 마지막 `pause`, CRLF·BOM 없음), `package`(zip, `fflate`), `deploy`(`DEPLOY_DIR` 기본 `/mnt/c/WordQuiz`, `data/`·`reports/` 보존, `server.lock` 있으면 중단·`--force`). 완료 기준 ①~⑦은 EXECUTION-PLAN 참고(zip을 `node_modules` 없는 임시 디렉터리에 풀어 서버 기동·`GET /api/databases` 확인 스모크 포함). 커밋 제안 3개: `feat: Add production build` / `feat: Add package and deploy scripts` / `feat: Add start.bat launcher`
-3. **주의(M8)**: 글꼴 추가로 `dist/public`이 커졌다(총 5.1MB) — zip 크기 확인. 실제 `C:\WordQuiz` 배포는 **M9에서 사용자가 승인한 뒤**에만(기존 `data\` 보존). 테스트로 띄운 서버는 항상 `--no-open`
-4. M9: Windows 자동 검증 전 항목, 사용자 수동 체크리스트(EXECUTION-PLAN 3.3), 추적표 확정, `README.md`(설치·첫 실행·import 흐름·백업 위치·방화벽·문제 해결). 실제 폰의 Enter 제출·자동 고침도 수동 체크리스트
-5. 클라이언트 작업 요령: 화면 스크린샷은 `npm run build && npm run shots`(휴대폰은 iframe 390px, 다크는 `preferredColorScheme=0`), 결함 주입은 소스를 바꾸기 전에 문자열이 실제로 적용됐는지 확인하고 **끝나면 원복 여부를 `git status`로 확인**. 개발 서버 확인은 `npm run dev:seed` → http://localhost:35101, 갤러리는 `#/dev`, `#/dev/m7`, `#/dev/words-edit`, `#/dev/done3`
-6. **Windows 자동 검증 시 주의**: WSL의 `curl`은 Windows `localhost`에 닿지 않으므로 `curl.exe`를 쓴다. `Stop-Process -Force`는 시그널 핸들러를 실행하지 않아 `SIGTERM` 정상 종료는 자동 검증 불가(대신 강제 종료 후 재기동 시 `last_seen_at` 보정을 검증). 테스트로 띄운 `node.exe`는 `CommandLine`으로 **자기가 띄운 것만** 종료할 것. `cmd.exe`는 UNC 경로에서 실행 불가라 `/mnt/c/...`에서 실행. 이 PC는 Node 24.14라 최소 버전 22.13은 검증 불가
-7. 알아둘 것: xlsx 라이브러리 `read-excel-file`은 9.3.10으로 스파이크했음. 버전 고정할 것(새 패키지도 `--save-exact`). 스파이크 코드는 스크래치패드에만 있어 사라졌음(TECH-SPEC 14장에 결과만 있음)
+1. `git status`/`git log --oneline -8`로 상태를 확인하고 `npm run typecheck && npm test`(**1063개/49파일**)를 돌린다. 브랜치는 `main`(origin push는 아직 안 함, 사용자에게 물어볼 것). `data/`·`docs/ui-checks/`만 untracked면 정상. `release/WordQuiz.zip`은 `.gitignore`에 있어 안 보인다
+2. **M8 남은 일 — `scripts/package-e2e.sh`(`npm run smoke:package`)** 를 기존 스모크 스크립트(`server-e2e.sh`, `win-smoke.sh`)의 관례(`WIN_DEV` 가드로 실제 `C:\WordQuiz` 거부, 모든 서버 시작에 `--no-open`, `CommandLine`으로 **자기가 띄운 프로세스만** 종료, PASS/FAIL 집계)로 만든다:
+   - **Linux**: `npm run package` → `unzip -l`로 항목 확인 → **`node_modules` 없는 임시 폴더에 풀어** 서버 기동 → `GET /api/databases`(`{"databases":[]}`)와 `/`(HTML), `server.lock` 생성(완료 기준 ②)
+   - **Linux 배포**: 임시 `DEPLOY_DIR`에 `deploy` 두 번 + `data`·`reports` 체크섬 비교(③), 배포된 `.bat`의 모든 줄 CRLF·BOM 없음(⑥)
+   - **Windows**: `$WIN_DEV/package-e2e`(`C:\WordQuiz-dev\package-e2e`)에 deploy → `cmd.exe /c start.bat --no-open --port <n> < NUL`(`pause`가 막히지 않게)을 백그라운드로 실행 → `curl.exe`로 `/api/databases` → 서버가 떠 있는 동안 `deploy`가 lock으로 **중단**되는지, `--force`는 진행하는지(⑦) → `CommandLine`에 `package-e2e`가 든 `node.exe`만 종료하고 남은 `server.lock` 삭제. 샘플 xlsx가 있으면 `cmd.exe /c import.bat <샘플> --new-db … --report …`(검증만)이 종료 코드 0·178단어를 내는지도 확인
+   - 위험: `cmd.exe`를 WSL에서 실행하면 `where node`가 Windows PATH에 의존한다. 실패하면 그 줄만 조사해 `node.exe` 위치를 PATH에 넣도록 스크립트를 조정. 이 PC의 Node는 24.14라 22.13 경계는 `vm` 단위 테스트로만 검증됨
+   - 커밋 제안: `test: Add package smoke check`
+3. 회귀: `npm run smoke:server`(51), `smoke:win`, `smoke:win-db`, `smoke:import`(63)
+4. **문서(한글)**: EXECUTION-PLAN 진행표 M8과 **M8 결과**(완료 기준 ①~⑦ 대응, 계획 대비 변경: `%*`, 커밋 순서, `dist/`=배포 폴더), TECH-SPEC 8.1(zip 구조, `dist/`가 배포 폴더)·8.2(`%*`)·3.2 배포 명령 예시를 실제 스크립트에 맞춤·새 **14.11 M8 확인**. 편집 후 **제목 중복(`uniq -d`)** 확인. 커밋 제안: `docs: Record M8 results`
+5. 사용자에게 알릴 것: zip에 구형 브라우저용 `.woff` 10개가 함께 들어 있다(`.woff2`만으로 최신 브라우저는 충분). 빼면 zip이 작아지지만 필수는 아님 — 원하면 별도 작업
+6. **M9**: Windows 자동 검증 전 항목, 사용자 수동 체크리스트(EXECUTION-PLAN 3.3), 추적표 확정, `README.md`(설치·첫 실행·import 흐름·백업 위치·방화벽·문제 해결). 실제 `C:\WordQuiz` 배포는 **사용자가 승인하면** 한다(기존 `data\` 보존). 실제 폰의 Enter 제출·자동 고침도 수동 체크리스트
+7. 클라이언트 작업 요령: `npm run build && npm run shots`, 결함 주입은 소스를 바꾸기 전에 문자열이 실제로 적용됐는지 확인하고 **끝나면 `git status`로 원복 확인**. 개발 서버 확인은 `npm run dev:seed` → http://localhost:35101, 갤러리는 `#/dev`, `#/dev/m7`, `#/dev/words-edit`, `#/dev/done3`
+8. **Windows 자동 검증 시 주의**: WSL의 `curl`은 Windows `localhost`에 닿지 않으므로 `curl.exe`를 쓴다. `Stop-Process -Force`는 시그널 핸들러를 실행하지 않아 `SIGTERM` 정상 종료는 자동 검증 불가. 테스트로 띄운 `node.exe`는 `CommandLine`으로 **자기가 띄운 것만** 종료. `cmd.exe`는 UNC 경로에서 실행 불가라 `/mnt/c/...`에서 실행
+9. 알아둘 것: xlsx 라이브러리 `read-excel-file`은 9.3.10. 새 패키지는 `--save-exact`. 스파이크 코드는 사라졌고 TECH-SPEC 14장에 결과만 있음
 
 ## 프로젝트 규칙 (`prompts/PRD-instruction.md`)
 - Conventional Commits (`feat, fix, docs, style, refactor, test, chore`), 예: `docs: Create PRD`
@@ -122,15 +147,16 @@
 
 ## 6. 주요 관련 파일
 - `docs/PRD.md` — v1.4 확정본 (결정 로그 D1~D38)
-- `docs/TECH-SPEC.md` — 기술 스펙 v1.8 (T1~T16, DDL, API, CLI, 7장 프런트엔드 규칙, 14장 단계별 확인 기록 14.1~14.10)
-- `docs/EXECUTION-PLAN.md` — 실행 계획 v1.8 (M0~M9, 진행표(M0~M7 완료), 결과 기록, Windows 검증 계획, 추적표)
-- `docs/word-quiz-mockup.html` — 확정된 인터랙티브 목업 (영어 UI). `explorer.exe docs\\word-quiz-mockup.html`
+- `docs/TECH-SPEC.md` — 기술 스펙 v1.8 (T1~T16, DDL, API, CLI, 7장 프런트엔드, **8장 실행과 배포(8.1 구조, 8.2 start.bat, 8.5 WSL/Windows 차이)**, 14장 단계별 확인 14.1~14.10)
+- `docs/EXECUTION-PLAN.md` — 실행 계획 v1.8 (M0~M9, 진행표(M0~M7 완료, M8 갱신 필요), 결과 기록, 3장 Windows 검증 계획, 추적표)
+- `docs/word-quiz-mockup.html` — 확정된 인터랙티브 목업 (영어 UI)
 - `docs/ui-checks/` — 스크린샷(untracked, `npm run shots`로 재생성)
 - `data/latin_wortschatz.xlsx` — 입력 데이터 샘플 (178단어, untracked)
 - `prompts/PRD-instruction.md`, `prompts/req_prd.md` — 원본 요구사항 지침
 - `.claude/session-state.md` — 이 파일 / `.claude/commands/handoff.md` — 이 저장 명령
 - 메모리: `/home/ikhoon/.claude/projects/-home-ikhoon-lab-word-quiz/memory/` (`feedback_docs_in_korean`, `project_word_quiz_workflow`)
-- 클라이언트: `src/client/`(`theme.ts`, `fonts.ts`, `api.ts`, `app-context.tsx`, `App.tsx`, `hooks/{useHashRoute,usePersistedChoice,useQuiz}.ts`, `components/`(Shell·TopBar·TabsBar·StatusBar·StartPage·StartScreen·QuizPage와 퀴즈 패널들·WrongPage/Panel·WordsPage/Panel·SettingsPage/Panel·TableFrame·MeaningCell·대화상자), `dev/Gallery.tsx`), `test/client/`(`fake-fetch.ts`, `render.tsx`, `quiz-data.ts`, `words-data.ts`), `vite.config.ts`, `scripts/{dev.mjs,shots.sh}`
-- 서버·CLI·공용: `src/server/`(services, routes, app, start, db/ …), `src/cli/`, `src/shared/`(api, grading, scheduling, meanings), `test/{server,cli,shared,support}/`, `test/fixtures/tricky-meanings.json`, `release/import.bat`, `scripts/{build.mjs,win-smoke.sh,win-db-check.sh,import-e2e.sh,server-e2e.sh}`, `package.json`, `tsconfig.*.json`, `vitest.config.ts`
-- 검증 명령: `npm run typecheck` / `npm test -- <이름>` / `npm run build` / `npm run smoke:win` / `npm run smoke:win-db` / `npm run smoke:import` / `npm run smoke:server` / `npm run shots`
+- **M8(배포)**: `release/{start.bat,import.bat}`, `scripts/{build.mjs,package.mjs,deploy.mjs}`, `scripts/lib/release.mjs`, `test/release/{start-bat,release-lib,package,deploy}.test.ts`, `test/support/release.ts`, `release/WordQuiz.zip`(생성물, gitignore), `dist/`(생성물)
+- 클라이언트: `src/client/`(theme, fonts, api, app-context, App, hooks, components, dev/Gallery.tsx), `test/client/`, `vite.config.ts`, `scripts/{dev.mjs,shots.sh}`
+- 서버·CLI·공용: `src/server/`, `src/cli/`, `src/shared/`, `test/{server,cli,shared,support}/`, `test/fixtures/tricky-meanings.json`, `scripts/{win-smoke.sh,win-db-check.sh,import-e2e.sh,server-e2e.sh}`, `package.json`, `tsconfig.*.json`, `vitest.config.ts`
+- 검증 명령: `npm run typecheck` / `npm test -- <이름>` / `npm run build` / `npm run package` / `npm run deploy -- --dir <폴더> [--force]` / `npm run smoke:win` / `smoke:win-db` / `smoke:import` / `smoke:server` / `npm run shots` (`smoke:package`는 아직 없음)
 - (참고) Artifact 링크 https://claude.ai/artifact/Gqn1G2DA4wXmBB4dsMrf6E — 옛 한국어 UI 버전, 사용자가 열지 못함. 기준 아님
