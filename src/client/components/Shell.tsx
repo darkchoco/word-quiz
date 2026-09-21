@@ -8,6 +8,7 @@ import { StatusBar } from './StatusBar';
 import { SwitchDbDialog } from './SwitchDbDialog';
 import { TabsBar } from './TabsBar';
 import { TopBar } from './TopBar';
+import { WordsPage } from './WordsPage';
 import { WrongPage } from './WrongPage';
 
 /** The frame around every screen once a session exists. */
@@ -38,7 +39,7 @@ export function Shell() {
       <TabsBar active={tab} onChange={setTab} />
       <Box component="main" sx={{ flex: 1, bgcolor: 'background.paper' }}>
         <Box sx={{ width: '100%', maxWidth: 960, mx: 'auto' }}>
-          {tab === 'quiz' ? <QuizPage /> : tab === 'wrong' ? <WrongPage onRetest={retest} /> : <Placeholder tab={tab} />}
+          {tab === 'quiz' ? <QuizPage /> : tab === 'wrong' ? <WrongPage onRetest={retest} /> : tab === 'words' ? <WordsPage /> : <Placeholder tab={tab} />}
         </Box>
       </Box>
       <StatusBar stats={session.stats} />
