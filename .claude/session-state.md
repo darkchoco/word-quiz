@@ -1,8 +1,8 @@
 # Session State — Word Quiz
 
 ## 1. 날짜 / 주제
-- 저장일: 2026-09-20 (작업 진행: 2026-09-18 ~ 09-20)
-- 주제: 문서 v1.8(PRD v1.4, TECH-SPEC v1.8, EXECUTION-PLAN v1.8). **M0~M6 구현·커밋 완료(브랜치 `main`). M6 사용자 UI 컨펌 대기** → 다음은 컨펌 반영 후 M7
+- 저장일: 2026-09-21 (작업 진행: 2026-09-18 ~ 09-21)
+- 주제: 문서 v1.8(PRD v1.4, TECH-SPEC v1.8, EXECUTION-PLAN v1.8). **M0~M7 구현·커밋 완료(브랜치 `main`, HEAD `24d98fd` + 이 파일 커밋). M5·M6·M7 사용자 UI 컨펌 모두 완료** → 다음은 **M8(번들·패키징·배포)을 plan mode로 시작**
 
 ## 2. 완료한 작업
 - [x] `docs/PRD.md` v1.2 확정 (결정 로그 D1~D36, 미결 사항 없음)
@@ -25,8 +25,11 @@
 - [x] **M5 구현 완료 (미커밋, HEAD `6a7e9d7`)**: `src/client/`(theme, fonts, api, app-context(`classifyApiError`), hooks, components 11개, App, ErrorBoundary, main, index.html, dev/Gallery), `vite.config.ts`, `scripts/{dev.mjs,shots.sh}`, `build.mjs`(vite build 추가), `server-e2e.sh`(클라이언트 서빙 검사), `test/client/`(71개), `docs/ui-checks/`(스크린샷 14장). 전체 926개 통과, 결함 주입 14가지 모두 검출, `smoke:win` 24/24·`smoke:win-db`·`smoke:import` 63/63·`smoke:server` 51/51, 브라우저 콘솔 오류 0건, 390px 가로 스크롤 없음. 문서(TECH-SPEC 2.1·2.3·7.2·14.8, EXECUTION-PLAN M5 결과 + UI 컨펌 요청) 갱신 완료
 - [x] M5 커밋 완료(8개 + dev 프록시 수정 2개), 브랜치를 `main`으로 바꿈. `npm run dev` 빈 화면 원인은 Vite 프록시 `/api`가 `/api.ts`를 가로챈 것(`/api/`로 수정, `test/vite-config.test.ts`). 사용자의 M5 UI 컨펌은 "오케이"로 받음
 - [x] **M6 구현·커밋 완료 (커밋 5개 `0333459`~`ca18eee` + 세션 상태 커밋)**: `src/client/hooks/useQuiz.ts`(상태 기계), `components/{IdlePanel,QuestionPanel,FeedbackPanel,Done3Dialog,ResultPanel,EmptyPoolNotice,AllDoneNotice,QuizPage}.tsx`, 앱 컨텍스트에 `updateStats`·`retestRequested/requestRetest/clearRetest`, `Shell`의 quiz 탭 연결·본문 흰 바탕, 갤러리·`shots.sh` 확장, `test/client/{quiz-panels,quiz-page,quiz-data}`. 전체 969개 통과, 결함 주입 24가지 검출, `smoke:server` 51/51, 콘솔 오류 0건. **발견**: `lang="la"`가 EB Garamond에서 u→v로 그려짐 → `"locl" 0`. 문서(TECH-SPEC 7.2·14.9, EXECUTION-PLAN M6 결과) 갱신 완료
-- [ ] **M6 남은 일**: 사용자 UI 컨펌만(EXECUTION-PLAN M6 결과에 방법과 목업에 없는 문구 4개 목록). `docs/ui-checks/`·`data/`는 계속 untracked(커밋하지 않기로 함)
-- [ ] M6~M9 미구현 (EXECUTION-PLAN 진행 현황 표 참고)
+- [x] **M6 사용자 UI 컨펌 완료**(2026-09-21, "확인했고 괜찮아")
+- [x] **UI 글꼴을 Noto Sans KR로 변경**(사용자 요청, 커밋 `219efc1`): `@fontsource/noto-sans-kr@5.3.0`(정확 고정), `fonts.ts`에 latin·korean 400/500, `theme.ts`의 `UI_FONT`. 단어·로고는 EB Garamond, 숫자·코드는 IBM Plex Mono 그대로. 한글 서브셋이 굵기당 약 530KB라 `dist`가 2.4MB → 5.1MB
+- [x] **M7 구현·커밋 완료** (커밋 6개: `d9742e7` 오답 화면 / `ba6e938` 단어 관리 / `2ae3192` 설정 / `b86be32` 휴대폰 표 수정 / `1374319` 갤러리·스크린샷 / `24d98fd` 문서). `src/client/components/{WrongPage,WrongPanel,WordsPage,WordsPanel,SettingsPage,SettingsPanel,TableFrame,MeaningCell}.tsx`, `Placeholder.tsx` 삭제, `Shell`이 세 탭 연결(`Retest wrong only` → `requestRetest()` + `#/quiz`). 테스트 37개 추가(전체 **1006개/45파일**), 결함 주입 22가지 모두 검출, `smoke:server` 51/51, 콘솔 오류 0건. 서버·shared 변경 없음. 실제 서버로 확인: 뜻 수정 직후 새 뜻으로 Perfect, 재시작 후 뜻·문제 수 유지. 문서(TECH-SPEC 7.1·7.2·14.10, EXECUTION-PLAN 진행표·M7 결과) 갱신 완료
+- [x] **M7 사용자 전체 UI 컨펌 완료**(2026-09-21, "UI 컨펌 오케이")
+- [ ] M8~M9 미구현 (`release/start.bat`, `package`·`deploy` 스크립트, `README.md` 없음. EXECUTION-PLAN M8·M9 참고)
 
 ## 3. 결정과 이유 (상세는 PRD 8.1 D1~D36, TECH-SPEC 1장 T1~T12)
 | 결정 | 이유 |
@@ -52,6 +55,12 @@
 | **화면은 Windows Chrome 헤드리스로 직접 확인**: `"/mnt/c/Program Files/Google/Chrome/Application/chrome.exe" --headless=new --disable-gpu --hide-scrollbars --window-size=900,700 --screenshot=C:\\Users\\ikhoon\\AppData\\Local\\Temp\\x.png http://localhost:<port>/` 후 `/mnt/c/Users/ikhoon/AppData/Local/Temp/x.png`를 스크래치패드로 복사해 Read로 봄(검증됨: EB Garamond·장음 기호 정상). 서버는 `--host 0.0.0.0`, Windows→WSL `localhost`는 접속됨. 상호작용 상태(대화상자)는 개발용 갤러리(`#/dev`)와 jsdom 테스트로 보완 | 사용자가 UI 컨펌을 해야 하고 정적 스크린샷을 목업과 나란히 대조할 수 있음 |
 | MUI 버튼은 기본 대문자(`START`) → 테마에서 `textTransform: none`. 폰트는 `latin`·`latin-ext` 조각만 import(전체 import 시 키릴·그리스어까지 딸려 옴). 표시 컴포넌트와 컨테이너 분리, 클라이언트 테스트는 `console.error` 호출 시 실패 | 목업의 `Start` 표기, 배포물 크기, React 경고를 놓치지 않기 위함 |
 | 서버 `0.0.0.0` 바인딩 + Content-Type/Host 검사, `--local-only` 옵션 (T·9장) | 모바일 접속 요구 + 무인증 LAN 위험 완화 |
+| **UI 글꼴: Noto Sans KR**(latin·korean 400/500만 번들), 단어·로고는 EB Garamond 유지 (M7) | 사용자 요청("질문의 폰트는 좋은데 메뉴나 사이트 전반은 Noto Sans KR"). 한글 서브셋이 굵기당 한 파일(약 530KB)이라 굵기를 2개로 제한 |
+| 오답·단어·설정 화면은 **컨테이너(`…Page`) + 표시(`…Panel`)** 로 분리, **탭에 들어올 때마다 서버에서 새로 읽음**(클라이언트 캐시 없음) (M7) | 서버가 매번 DB를 읽으므로 수정한 뜻이 다음 채점에 즉시 반영되고 설정 문제 수가 퀴즈 탭에 반영됨. 표시 컴포넌트는 서버 없이 테스트·갤러리 가능 |
+| 뜻 편집은 **저장 전에 클라이언트에서 `validateMeanings`** 로 검사, 서버의 `HEADWORD_EXISTS`·`INVALID_MEANINGS`·`WORD_NOT_FOUND`는 **편집 행 안에 인라인 표시하고 입력 유지**, 그 밖의 오류만 `handleApiError` (M7) | 잘못된 입력을 서버에 보내지 않고, 사용자가 타이핑한 내용을 잃지 않게 함 |
+| **편집 중인 행은 `colSpan={4}` 셀 하나**에 입력창을 줄바꿈해 놓음(목업의 열 정렬과 다름) (M7) | 휴대폰에서 입력창이 좁아 쓸 수 없었음. 데스크톱은 한 줄 |
+| 좁은 화면(600px 미만)에서 표의 여백·글자·버튼·체크박스를 줄여 **Done·Edit 열이 화면 안에** 들어오게 함 (M7) | 390px에서 옆으로 스크롤해야 Edit이 보였음 |
+| 저장 성공 **토스트는 넣지 않음**(설정만 "Saved" 문구), 설정은 정수 정규식 + 1~200 검사 (M7) | 저장하면 표가 바로 바뀜. 필요하다고 하면 `App`의 Snackbar를 `severity` 지원하도록 확장(작음) |
 | 커밋은 주제별 분리, 메시지를 먼저 보여주고 확인 | 사용자 요청 + 프로젝트 규칙 |
 | 이번 범위는 PC 서버 + 같은 네트워크 휴대폰 접속. 휴대폰 단독 실행은 나중에 필요하면 (D37). **향후 홈 네트워크 별도 서버로 이전 계획** | 사용자 결정. 그래서 허용 Host를 설정으로 추가 가능하게 함(T15, `nas.local` 등), 인증은 그때 검토 (TECH-SPEC 15장) |
 | DB 이름 대소문자 무시 중복 판정(T13), `.bat` CRLF·BOM 없음(T14), `server.lock`으로 실행 중 deploy 차단(T16) | Windows/WSL 차이 |
@@ -85,15 +94,24 @@
 - **테스트 기대값 산수 실수**: pool 재시험 테스트에서 기대값을 잘못 셈(구현은 옳았음). 실패하면 구현과 기대값 중 어느 쪽이 틀렸는지 먼저 따져볼 것
 - **WSL `curl`로 Windows 서버 접속**: `localhost`로는 안 됨. `curl.exe` 사용
 - **WSL에 `python3` 없음**: xlsx 분석은 `unzip` + node로 함
+- **편집 행을 CSS(`tr { display: block }`)로 세로 배치**: 표 안에서 블록 행이 첫 열 너비 익명 셀에 갇혀 입력창이 좁아짐. `colSpan` 셀 하나 + flex-wrap으로 해결
+- **갤러리에서 휴대폰 폭 표를 잰 것**: 갤러리는 Section 테두리 + 패딩이 겹쳐 실제 페이지보다 표가 좁게 나옴(Edit이 잘려 보임). 실제 페이지와 같은 여백(`words-edit` 경로는 `p: 0`)으로 찍을 것
+- **표제어 입력창에 `"locl" 0`을 빼먹음**: `taurus`가 `tavrvs`로 보임(EB Garamond `lang="la"`). 표제어를 그리는 **모든 곳**(입력창 포함)에 `fontFeatureSettings: '"locl" 0'`
+- **jsdom `type=number`에 `1e2` 입력**: `"100"`으로 바뀌어 검증이 통과해 버림(실제 브라우저는 `"1e2"`). 자동 테스트에서 뺌
+- **설정 API를 세션 없이 조회**(재시작 직후 `GET /settings` → `NO_SESSION`): 서버 결함이 아니라 검증 스크립트 실수. 설정·단어 API는 `POST /session` 뒤에만
+- **`node -e '…'`에 따옴표가 많은 한글 문서 치환 스크립트를 인라인으로 넣음**: 따옴표 충돌로 문법 오류(수정은 하나도 안 됨). 긴 치환은 **스크래치패드 `.cjs` 파일**로 쓰고, 치환 문자열은 함수 형태(`() => b`)로
+- **스크린샷 자르기 도구 없음**(ImageMagick·sharp 없음, `file`도 없음): 긴 갤러리를 읽으면 축소되어 안 보임 → 상태별 **갤러리 경로를 따로**(`#/dev/m7`, `#/dev/words-edit`) 만들어 작은 크기로 찍음
+- **`npx prettier --check`**: 저장소에 prettier 설정이 없어 기존 파일도 경고. `--write`로 서식을 바꾸지 말 것
 - **`data/latin_wortschatz.xlsx`가 한 번 사라졌었음**(원인 불명, 사용자가 다시 복사). 구현·테스트가 이 파일에 의존하면 안 됨. 테스트 픽스처는 저장소 안에 별도로 둘 것 (TECH-SPEC 10장)
 
 ## 5. 다음 세션 시작 시 할 일
-1. `git status`/`git log --oneline -8`로 상태를 확인하고 `npm run typecheck && npm test`(969개)를 돌린다. 브랜치는 `main`(origin push는 아직 안 함, 사용자에게 물어볼 것)
-2. 사용자 UI 컨펌을 받는다(`npm run dev:seed` → http://localhost:35101, 갤러리 `#/dev`, `#/dev/done3`). 지적 사항이 있으면 먼저 반영
-3. **M7(오답 · 단어 관리 · 설정)**: plan mode로 시작. Wrong 탭의 "Retest wrong only"는 `useApp().requestRetest()` 후 `#/quiz`로 이동하면 된다(M6가 배너·재시험 시작을 처리). `api.ts`에 `wrong/words/patchWord/setDone/getSettings/putSettings`가 이미 있음. 뜻 편집 형식은 `src/shared/meanings.ts`(`format`/`parse`)
-5. 클라이언트 작업 요령: 화면 스크린샷은 `npm run build && npm run shots`(휴대폰은 iframe 390px, 다크는 `preferredColorScheme=0`), 결함 주입은 소스를 바꾸기 전에 문자열이 실제로 적용됐는지 확인
+1. `git status`/`git log --oneline -8`로 상태를 확인하고 `npm run typecheck && npm test`(1006개/45파일)를 돌린다. 브랜치는 `main`(origin push는 아직 안 함, 사용자에게 물어볼 것). `data/`·`docs/ui-checks/`만 untracked면 정상
+2. **M8(번들 · 패키징 · 배포)**: plan mode로 시작. EXECUTION-PLAN M8을 읽고 시작한다. 지금 있는 것은 `scripts/build.mjs`(esbuild + `vite build`, 이미 동작), `release/import.bat`뿐이다. **없는 것**: `release/start.bat`(`chcp 65001`, Node 22.13 미만 안내, 마지막 `pause`, CRLF·BOM 없음), `package`(zip, `fflate`), `deploy`(`DEPLOY_DIR` 기본 `/mnt/c/WordQuiz`, `data/`·`reports/` 보존, `server.lock` 있으면 중단·`--force`). 완료 기준 ①~⑦은 EXECUTION-PLAN 참고(zip을 `node_modules` 없는 임시 디렉터리에 풀어 서버 기동·`GET /api/databases` 확인 스모크 포함). 커밋 제안 3개: `feat: Add production build` / `feat: Add package and deploy scripts` / `feat: Add start.bat launcher`
+3. **주의(M8)**: 글꼴 추가로 `dist/public`이 커졌다(총 5.1MB) — zip 크기 확인. 실제 `C:\WordQuiz` 배포는 **M9에서 사용자가 승인한 뒤**에만(기존 `data\` 보존). 테스트로 띄운 서버는 항상 `--no-open`
+4. M9: Windows 자동 검증 전 항목, 사용자 수동 체크리스트(EXECUTION-PLAN 3.3), 추적표 확정, `README.md`(설치·첫 실행·import 흐름·백업 위치·방화벽·문제 해결). 실제 폰의 Enter 제출·자동 고침도 수동 체크리스트
+5. 클라이언트 작업 요령: 화면 스크린샷은 `npm run build && npm run shots`(휴대폰은 iframe 390px, 다크는 `preferredColorScheme=0`), 결함 주입은 소스를 바꾸기 전에 문자열이 실제로 적용됐는지 확인하고 **끝나면 원복 여부를 `git status`로 확인**. 개발 서버 확인은 `npm run dev:seed` → http://localhost:35101, 갤러리는 `#/dev`, `#/dev/m7`, `#/dev/words-edit`, `#/dev/done3`
 6. **Windows 자동 검증 시 주의**: WSL의 `curl`은 Windows `localhost`에 닿지 않으므로 `curl.exe`를 쓴다. `Stop-Process -Force`는 시그널 핸들러를 실행하지 않아 `SIGTERM` 정상 종료는 자동 검증 불가(대신 강제 종료 후 재기동 시 `last_seen_at` 보정을 검증). 테스트로 띄운 `node.exe`는 `CommandLine`으로 **자기가 띄운 것만** 종료할 것. `cmd.exe`는 UNC 경로에서 실행 불가라 `/mnt/c/...`에서 실행. 이 PC는 Node 24.14라 최소 버전 22.13은 검증 불가
-7. 알아둘 것: xlsx 라이브러리 `read-excel-file`은 9.3.10으로 스파이크했음. 버전 고정할 것. 스파이크 코드는 스크래치패드에만 있어 사라졌음(TECH-SPEC 14장에 결과만 있음)
+7. 알아둘 것: xlsx 라이브러리 `read-excel-file`은 9.3.10으로 스파이크했음. 버전 고정할 것(새 패키지도 `--save-exact`). 스파이크 코드는 스크래치패드에만 있어 사라졌음(TECH-SPEC 14장에 결과만 있음)
 
 ## 프로젝트 규칙 (`prompts/PRD-instruction.md`)
 - Conventional Commits (`feat, fix, docs, style, refactor, test, chore`), 예: `docs: Create PRD`
@@ -103,14 +121,16 @@
 - 스택: TypeScript + React + Material UI + SQLite(`node:sqlite`) + Node (개발 WSL / 실행 Windows, `C:\WordQuiz`, `start.bat`, `http://localhost:35000`)
 
 ## 6. 주요 관련 파일
-- `docs/PRD.md` — v1.2 확정본 (결정 로그 D1~D36)
-- `docs/TECH-SPEC.md` — 기술 스펙 v1.0 (T1~T12, DDL, API, CLI, 스파이크 결과)
-- `docs/EXECUTION-PLAN.md` — 실행 계획 v1.0 (M0~M9, 검증 계획, 추적표)
-- `docs/word-quiz-mockup.html` — 확정된 인터랙티브 목업 (영어 UI). 브라우저에서 `explorer.exe docs\\word-quiz-mockup.html`로 열기
+- `docs/PRD.md` — v1.4 확정본 (결정 로그 D1~D38)
+- `docs/TECH-SPEC.md` — 기술 스펙 v1.8 (T1~T16, DDL, API, CLI, 7장 프런트엔드 규칙, 14장 단계별 확인 기록 14.1~14.10)
+- `docs/EXECUTION-PLAN.md` — 실행 계획 v1.8 (M0~M9, 진행표(M0~M7 완료), 결과 기록, Windows 검증 계획, 추적표)
+- `docs/word-quiz-mockup.html` — 확정된 인터랙티브 목업 (영어 UI). `explorer.exe docs\\word-quiz-mockup.html`
+- `docs/ui-checks/` — 스크린샷(untracked, `npm run shots`로 재생성)
 - `data/latin_wortschatz.xlsx` — 입력 데이터 샘플 (178단어, untracked)
 - `prompts/PRD-instruction.md`, `prompts/req_prd.md` — 원본 요구사항 지침
 - `.claude/session-state.md` — 이 파일 / `.claude/commands/handoff.md` — 이 저장 명령
 - 메모리: `/home/ikhoon/.claude/projects/-home-ikhoon-lab-word-quiz/memory/` (`feedback_docs_in_korean`, `project_word_quiz_workflow`)
-- 코드(M5, 미커밋): `src/client/`, `test/client/`, `vite.config.ts`, `scripts/{dev.mjs,shots.sh}`, `tsconfig.client.json`, `vitest.config.ts`. 이전: `src/server/`(services, routes, app, start …), `test/server/`, `test/support/{api,world,bundle,http}.ts`, `scripts/server-e2e.sh`, `src/cli/`, `test/cli/`, `release/import.bat`, `scripts/import-e2e.sh`, `src/server/errors.ts`, `src/server/db/`, `test/server/`, `test/support/`, `scripts/win-db-check.sh`, `src/shared/`(api, grading, scheduling, meanings), `test/shared/`, `test/fixtures/tricky-meanings.json`, `package.json`, `tsconfig.*.json`, `vitest.config.ts`, `src/server/paths.ts`, `src/server/index.ts`(스모크용), `src/cli/index.ts`(스모크용), `test/smoke.test.ts`, `scripts/build.mjs`, `scripts/win-smoke.sh`
-- 검증 명령: `npm run typecheck` / `npm test -- <이름>` / `npm run build` / `npm run smoke:win` / `npm run smoke:win-db` / `npm run smoke:import` / `npm run smoke:server`
+- 클라이언트: `src/client/`(`theme.ts`, `fonts.ts`, `api.ts`, `app-context.tsx`, `App.tsx`, `hooks/{useHashRoute,usePersistedChoice,useQuiz}.ts`, `components/`(Shell·TopBar·TabsBar·StatusBar·StartPage·StartScreen·QuizPage와 퀴즈 패널들·WrongPage/Panel·WordsPage/Panel·SettingsPage/Panel·TableFrame·MeaningCell·대화상자), `dev/Gallery.tsx`), `test/client/`(`fake-fetch.ts`, `render.tsx`, `quiz-data.ts`, `words-data.ts`), `vite.config.ts`, `scripts/{dev.mjs,shots.sh}`
+- 서버·CLI·공용: `src/server/`(services, routes, app, start, db/ …), `src/cli/`, `src/shared/`(api, grading, scheduling, meanings), `test/{server,cli,shared,support}/`, `test/fixtures/tricky-meanings.json`, `release/import.bat`, `scripts/{build.mjs,win-smoke.sh,win-db-check.sh,import-e2e.sh,server-e2e.sh}`, `package.json`, `tsconfig.*.json`, `vitest.config.ts`
+- 검증 명령: `npm run typecheck` / `npm test -- <이름>` / `npm run build` / `npm run smoke:win` / `npm run smoke:win-db` / `npm run smoke:import` / `npm run smoke:server` / `npm run shots`
 - (참고) Artifact 링크 https://claude.ai/artifact/Gqn1G2DA4wXmBB4dsMrf6E — 옛 한국어 UI 버전, 사용자가 열지 못함. 기준 아님
