@@ -534,14 +534,14 @@ Result: NOT applied. Fix the errors in the Excel file and run again.
 | 5.2 라운드 전 | `IdlePanel`(방향 라디오, 라운드 번호·출제 가능 수, Start), 재시험 배너 | `GET /pool` |
 | 5.3 진행 | `QuestionPanel`(진행 막대, 표제어, 입력 폼), `FeedbackPanel`(판정 칩, 묶음 ✓/✗, Mark done, Next), `Done3Dialog` | `POST /rounds/:id/answers` |
 | 5.4 결과 | `ResultPanel`, `EmptyPoolNotice`, `AllDoneNotice` | `AnswerResult.summary` |
-| 5.5 오답 | `WrongPage`(표, Retest wrong only) | `GET /wrong` |
-| 5.6 단어 관리 | `WordsPage`(검색창, `WordTable`, 행 편집) | `GET/PATCH /words`, `POST /words/:id/done` |
-| 5.7 설정 | `SettingsPage` | `GET/PUT /settings` |
+| 5.5 오답 | `WrongPage`(컨테이너) → `WrongPanel`(표, Retest wrong only), `MeaningCell`, `TableFrame` | `GET /wrong` |
+| 5.6 단어 관리 | `WordsPage`(컨테이너) → `WordsPanel`(검색창, 표, 행 편집), `MeaningCell`, `TableFrame` | `GET/PATCH /words`, `POST /words/:id/done` |
+| 5.7 설정 | `SettingsPage`(컨테이너) → `SettingsPanel` | `GET/PUT /settings` |
 
 ### 7.2 구현 규칙
 - 라우팅은 `location.hash`(`#/quiz`, `#/wrong`, `#/words`, `#/settings`)를 읽는 작은 훅 하나로 처리한다.
 - 서버 상태는 `api.ts`의 fetch 래퍼와 화면별 훅으로 관리한다(별도 상태 관리·쿼리 라이브러리 없음). 오류 코드는 `ApiError`로 던지고 화면에서 코드별로 분기한다.
-- 테마: 목업의 색 토큰(`--accent #2F55B5` 등)을 MUI 테마로 옮기고 `prefers-color-scheme`으로 다크 모드를 지원한다. 표제어는 `EB Garamond`(장음 기호 지원), 숫자·코드는 `IBM Plex Mono`.
+- 테마: 목업의 색 토큰(`--accent #2F55B5` 등)을 MUI 테마로 옮기고 `prefers-color-scheme`으로 다크 모드를 지원한다. 표제어는 `EB Garamond`(장음 기호 지원), 숫자·코드는 `IBM Plex Mono`. 메뉴·본문 등 UI 글꼴은 `Noto Sans KR`(`latin`·`korean` 400/500만 번들, 한글 서브셋이 굵기당 약 530KB라 `dist`가 약 2.7MB 늘었다).
 - **표시 컴포넌트와 컨테이너를 나눈다(M5)**: `StartScreen`, `NoDbDialog`, `SwitchDbDialog`, `TopBar`, `TabsBar`, `StatusBar`, `ServerUnreachable`는 props만 받는 표시 컴포넌트이고, `StartPage`, `Shell`, `App`이 데이터를 다룬다. 그래서 대화상자·오류 상태를 서버 없이 테스트하고 갤러리에 그릴 수 있다.
 - **API 오류 처리(M5)**: `api.ts`는 `ApiError(code, status, message)`를 던진다. 서버에 닿지 못하면 `NETWORK_ERROR`, JSON이 아닌 응답은 `INVALID_RESPONSE`. `classifyApiError`(순수 함수)가 규칙을 정한다: `NO_SESSION` → 시작 화면, `DB_NOT_FOUND` → 시작 화면 + "The selected DB does not exist." 알림, 그 밖에는 스낵바. 부팅 시 서버에 못 닿으면 "Cannot reach the server"와 Retry.
 - **브라우저 저장소**: `usePersistedChoice`가 마지막에 쓴 DB만 `localStorage`에 기억한다. 읽기·쓰기를 모두 `try/catch`로 감싸 저장소가 막혀 있어도 화면은 정상 동작한다.
@@ -558,6 +558,8 @@ Result: NOT applied. Fix the errors in the Excel file and run again.
 - **퀴즈 상태 기계(M6)**: `useQuiz`가 `loading → idle | question → feedback → question … → result`를 관리하고(`failed`는 Retry), 서버에 있는 것은 서버가 기억한다. 마운트할 때 `GET /rounds/current`로 열린 라운드의 다음 문제로 이어가고(`NO_ACTIVE_ROUND`이면 `GET /pool`로 idle), 피드백 화면은 재마운트하면 사라진다(5.3이 허용). `ROUND_IN_PROGRESS`·`POOL_EMPTY`·`ALL_DONE`은 서버가 지금 말하는 상태를 다시 불러와 보여 주고, `ALREADY_ANSWERED`·`OUT_OF_ORDER`는 `GET /rounds/current`로 다시 맞춘다. 그 밖의 오류는 `handleApiError`.
 - **포커스 규칙(M6)**: 새 문제가 뜨면 답 입력창, 제출하면 **Next**(대화상자가 열려 있는 동안은 대화상자가 갖고 닫히면 Next로 돌아온다). 제출 뒤 입력창은 읽기 전용으로 답을 그대로 보여 준다. 공백뿐인 답은 보내지 않는다(서버는 `EMPTY_INPUT`).
 - **3회 연속 확인창과 마지막 문제**: 마지막 문제라도 확인창과 Mark done은 결과 화면 **앞**에서 처리한다(`questionPosition`을 함께 보내므로 서버가 이미 끝난 라운드의 문항으로 검사). 확인창이 열려 있는 동안 Next는 동작하지 않는다.
+- **오답 · 단어 관리 · 설정(M7)**: 세 탭 모두 탭에 들어올 때마다 서버에서 새로 읽는다(클라이언트 캐시 없음). 그래서 설정에서 바꾼 문제 수는 퀴즈 탭이 다시 열릴 때 pool로 반영되고, 수정한 뜻은 다음 채점에 즉시 쓰인다(서버가 매번 DB를 읽는다). `Retest wrong only`는 `Shell`이 `requestRetest()` 후 `#/quiz`로 이동시킨다. 단어 편집은 **저장 전에 `validateMeanings`로 클라이언트에서 검사**하고(빈 뜻·빈 묶음·묶음 4개 초과·왕복 불변 실패), 서버의 `HEADWORD_EXISTS`·`INVALID_MEANINGS`·`WORD_NOT_FOUND`는 편집 행 안에 표시하며 입력은 유지한다. 그 밖의 오류만 `handleApiError`로 보낸다. 설정은 정수 정규식과 1~200으로 검사한다(`1.5`·`-3`·빈칸 거부). 노트는 표시하지 않는다.
+- **표와 휴대폰(M7)**: `TableFrame`이 목업의 표 모양(둥근 테두리, 표 안에서만 가로 스크롤)을 만든다. 600px 미만에서는 Done·Edit 열이 화면 안에 들어오도록 여백·글자·버튼을 줄인다. **편집 중인 행은 4열을 합친 셀(`colSpan`)** 하나에 입력창들이 줄바꿈되게 놓는다(CSS로 행을 `display:block`으로 바꾸면 첫 열 너비에 갇혔다). 표제어 입력창에도 `locl` 끔이 필요하다(없으면 `taurus`가 `tavrvs`로 보인다).
 - **재시험 요청(M6→M7)**: Wrong 탭은 `requestRetest()`를 호출하고 Quiz 탭의 idle이 배너와 재시험의 번호·출제 가능 수를 보여 준 뒤 Start가 `mode: 'retest'`로 시작하며 요청을 소비한다(`clearRetest`). 재시험 대상이 0건이면 안내와 "Back to the quiz".
 - **표제어 글꼴**: `lang="la"`를 붙이면 EB Garamond의 로케일 대체(`locl`)가 켜져 **u가 v로 그려진다**(`captum` → `captvm`). 표제어에 `font-feature-settings: "locl" 0`을 준다(테스트가 지킨다).
 
@@ -839,6 +841,11 @@ node --disable-warning=ExperimentalWarning "%~dp0import.mjs" %*
 - **발견한 문제**: (1) `lang="la"` 때문에 u가 v로 그려졌다(스크린샷의 `capvt`로 발견, 위 규칙). (2) 갤러리에서 결과 패널의 최소 높이가 뷰포트를 따라가 과하게 컸다.
 - **화면 확인**: 실제 서버에 라운드를 만들어 두고 페이지를 열어 이어서 풀기(PC·390px·다크)와 갤러리(idle, 재시험, 문제, 긴 표제어, Perfect/Partial/Wrong, 결과, 빈 상태, 확인창)를 찍었고 콘솔 오류 0건, 390px 가로 스크롤 없음. 본문 배경을 목업처럼 흰 바탕으로 맞췄다.
 - **남은 것**: 실제 폰에서의 Enter 제출·자동 고침은 M9 수동 체크리스트.
+
+### 14.10 M7 오답 · 단어 관리 · 설정 확인 (2026-09-21)
+- **자동 테스트**: 클라이언트 37개 추가(전체 1006개, 45파일). 결함 주입 22가지(오답 4, 단어 관리 11, 설정 7)를 모두 즉시 검출했다. jsdom은 `type=number`에 `1e2`를 넣으면 `"100"`으로 바꿔 버려 이 입력은 자동 테스트에서 뺐다(실제 브라우저는 `"1e2"`를 돌려주고 정규식이 거부한다).
+- **실제 서버 확인**: 문제 수를 3으로 저장 → 라운드 시작 → 출제된 단어의 뜻을 `PATCH`로 바꾸고 새 뜻으로 답하면 `perfect`. 서버를 재시작해도 바뀐 뜻과 문제 수(37로 다시 확인)가 남는다. `smoke:server` 51/51 유지(서버 변경 없음).
+- **발견한 문제**: (1) 390px에서 표의 Done·Edit 열이 화면 밖이라 옆으로 스크롤해야 했다 → 좁은 화면 규칙 추가. (2) 편집 행을 CSS로 세로 배치하면 입력창이 첫 열 너비에 갇혔다 → `colSpan` 셀로 변경. (3) 표제어 입력창의 u→v 문제(위 규칙). 갤러리(`#/dev/m7`, `#/dev/words-edit`)로 세 화면의 상태를 모아 찍었다.
 
 ---
 
