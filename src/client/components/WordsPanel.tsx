@@ -1,7 +1,7 @@
 import { Box, Button, Checkbox, TextField, Typography } from '@mui/material';
 import type { WordRow } from '../../shared/api';
 import { formatMeanings } from '../../shared/meanings';
-import { MONO_FONT } from '../theme';
+import { MONO_FONT, WORD_FONT } from '../theme';
 import { MeaningCell } from './MeaningCell';
 import { TableFrame } from './TableFrame';
 
@@ -79,43 +79,43 @@ export function WordsPanel({ words, total, query, edit, onQuery, onToggleDone, o
             {words.map((word) =>
               edit?.id === word.id ? (
                 <tr key={word.id}>
-                  <td className="word">
-                    <TextField
-                      size="small"
-                      fullWidth
-                      autoFocus
-                      value={edit.headword}
-                      onChange={(event) => onChangeEdit({ headword: event.target.value })}
-                      onKeyDown={keys}
-                      slotProps={{ htmlInput: { 'aria-label': 'Word', lang: 'la', style: inputProps } }}
-                    />
-                  </td>
-                  <td>
-                    <TextField
-                      size="small"
-                      fullWidth
-                      value={edit.meanings}
-                      onChange={(event) => onChangeEdit({ meanings: event.target.value })}
-                      onKeyDown={keys}
-                      error={edit.error !== null}
-                      slotProps={{ htmlInput: { 'aria-label': 'Meaning', style: inputProps } }}
-                    />
-                    {edit.error && (
-                      <Typography role="alert" sx={{ fontSize: 12.5, color: 'error.main', mt: 0.5 }}>
-                        {edit.error}
-                      </Typography>
-                    )}
-                  </td>
-                  <td className="check">
-                    <Checkbox checked={word.done} disabled slotProps={{ input: { 'aria-label': `Done: ${word.headword}` } }} />
-                  </td>
-                  <td style={{ whiteSpace: 'nowrap' }}>
-                    <Button size="small" variant="contained" disabled={edit.saving} onClick={onSave}>
-                      Save
-                    </Button>{' '}
-                    <Button size="small" variant="outlined" disabled={edit.saving} onClick={onCancel}>
-                      Cancel
-                    </Button>
+                  <td colSpan={4}>
+                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, alignItems: 'flex-start' }}>
+                      <TextField
+                        size='small'
+                        autoFocus
+                        value={edit.headword}
+                        onChange={(event) => onChangeEdit({ headword: event.target.value })}
+                        onKeyDown={keys}
+                        slotProps={{ htmlInput: { 'aria-label': 'Word', lang: 'la', style: { ...inputProps, fontFamily: WORD_FONT, fontSize: 17, fontFeatureSettings: '"locl" 0' } } }}
+                        sx={{ flex: '1 1 180px', minWidth: 0 }}
+                      />
+                      <Box sx={{ flex: '2 1 240px', minWidth: 0 }}>
+                        <TextField
+                          size='small'
+                          fullWidth
+                          value={edit.meanings}
+                          onChange={(event) => onChangeEdit({ meanings: event.target.value })}
+                          onKeyDown={keys}
+                          error={edit.error !== null}
+                          slotProps={{ htmlInput: { 'aria-label': 'Meaning', style: inputProps } }}
+                        />
+                        {edit.error && (
+                          <Typography role='alert' sx={{ fontSize: 12.5, color: 'error.main', mt: 0.5 }}>
+                            {edit.error}
+                          </Typography>
+                        )}
+                      </Box>
+                      <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', whiteSpace: 'nowrap' }}>
+                        <Checkbox checked={word.done} disabled slotProps={{ input: { 'aria-label': `Done: ${word.headword}` } }} />
+                        <Button size='small' variant='contained' disabled={edit.saving} onClick={onSave}>
+                          Save
+                        </Button>
+                        <Button size='small' variant='outlined' disabled={edit.saving} onClick={onCancel}>
+                          Cancel
+                        </Button>
+                      </Box>
+                    </Box>
                   </td>
                 </tr>
               ) : (
