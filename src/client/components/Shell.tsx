@@ -8,10 +8,11 @@ import { StatusBar } from './StatusBar';
 import { SwitchDbDialog } from './SwitchDbDialog';
 import { TabsBar } from './TabsBar';
 import { TopBar } from './TopBar';
+import { WrongPage } from './WrongPage';
 
 /** The frame around every screen once a session exists. */
 export function Shell() {
-  const { session, switchDb } = useApp();
+  const { session, switchDb, requestRetest } = useApp();
   const [tab, setTab] = useHashRoute();
   const [confirming, setConfirming] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -26,13 +27,18 @@ export function Shell() {
     }
   };
 
+  const retest = () => {
+    requestRetest();
+    setTab('quiz');
+  };
+
   return (
     <Box sx={{ minHeight: '100dvh', display: 'flex', flexDirection: 'column' }}>
       <TopBar language={session.language} db={session.db} onSwitchDb={() => setConfirming(true)} />
       <TabsBar active={tab} onChange={setTab} />
       <Box component="main" sx={{ flex: 1, bgcolor: 'background.paper' }}>
         <Box sx={{ width: '100%', maxWidth: 960, mx: 'auto' }}>
-          {tab === 'quiz' ? <QuizPage /> : <Placeholder tab={tab} />}
+          {tab === 'quiz' ? <QuizPage /> : tab === 'wrong' ? <WrongPage onRetest={retest} /> : <Placeholder tab={tab} />}
         </Box>
       </Box>
       <StatusBar stats={session.stats} />
