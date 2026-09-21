@@ -72,8 +72,15 @@ shot start-dark 1100 700 "" dark
 echo "== shell (session started)"
 curl -s -X POST -H 'Content-Type: application/json' -d '{"db":"latin.db"}' "$API/api/session" -o /dev/null
 shot shell-desktop 1100 700 "#/quiz"
-shot shell-mobile 500 800 "phone.html#/words"
+shot shell-mobile 500 800 "phone.html#/quiz"
 shot shell-dark 1100 700 "#/quiz" dark
+
+echo "== words and settings (the sample words, nothing answered yet)"
+shot words-desktop 1100 700 "#/words"
+shot words-mobile 500 800 "phone.html#/words"
+shot words-dark 1100 700 "#/words" dark
+shot settings-desktop 1100 400 "#/settings"
+shot settings-mobile 500 500 "phone.html#/settings"
 
 echo "== quiz (a round is open: the page continues at its question)"
 curl -s -X POST -H 'Content-Type: application/json' -d '{"mode":"normal","direction":"word_to_meaning"}' "$API/api/rounds" -o /dev/null
@@ -83,8 +90,12 @@ shot quiz-question-dark 1100 700 "#/quiz" dark
 curl -s -X DELETE "$API/api/session" -o /dev/null
 
 echo "== gallery"
-shot gallery 1000 6200 "#/dev"
-shot gallery-mobile 500 9500 "phone.html#/dev"
+shot gallery 1000 9000 "#/dev"
+shot gallery-mobile 500 14000 "phone.html#/dev"
+shot gallery-m7 1000 3400 "#/dev/m7"
+shot gallery-m7-mobile 500 4600 "phone.html#/dev/m7"
+shot words-edit-mobile 500 800 "phone.html#/dev/words-edit"
+shot gallery-m7-dark 1000 3400 "#/dev/m7" dark
 shot dialog-nodb 1000 600 "#/dev/nodb"
 shot dialog-switch 1000 600 "#/dev/switch"
 shot dialog-done3 1000 600 "#/dev/done3"

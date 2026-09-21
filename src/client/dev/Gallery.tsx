@@ -8,15 +8,19 @@ import { QuestionPanel } from '../components/QuestionPanel';
 import { ResultPanel } from '../components/ResultPanel';
 import { NoDbDialog } from '../components/NoDbDialog';
 import { ServerUnreachable } from '../components/ServerUnreachable';
+import { SettingsPanel } from '../components/SettingsPanel';
 import { StartScreen } from '../components/StartScreen';
 import { StatusBar } from '../components/StatusBar';
 import { SwitchDbDialog } from '../components/SwitchDbDialog';
 import { TabsBar } from '../components/TabsBar';
 import { TopBar } from '../components/TopBar';
+import { editOf, WordsPanel } from '../components/WordsPanel';
+import { WrongPanel } from '../components/WrongPanel';
+import type { WordRow } from '../../shared/api';
 
 // Development only (main.tsx imports this only when import.meta.env.DEV): every presentational
 // component in every state, so dialogs and error states can be looked at without a server.
-// #/dev shows all states; #/dev/nodb, #/dev/switch and #/dev/done3 show one dialog open over the page.
+// #/dev shows all states; #/dev/nodb, #/dev/switch and #/dev/done3 show one dialog open over the page; #/dev/m7 shows the states of the Wrong, Words and Settings tabs.
 
 const noop = () => {};
 const dbs = [
@@ -43,6 +47,16 @@ const feedback = (r: ReturnType<typeof result>, done = false) => (
   <FeedbackPanel result={r} done={done} blocked={false} busy={false} onMarkDone={noop} onNext={noop} />
 );
 
+const sampleWords: WordRow[] = [
+  { id: 1, headword: 'taurus', meanings: [['Stier']], done: false, wrongMark: false },
+  { id: 2, headword: 'gravis, e', meanings: [['schwer'], ['ernst', 'wichtig']], done: false, wrongMark: true },
+  { id: 3, headword: 'redīre, redeō, rediī, reditum', meanings: [['zurückgehen', 'zurückkehren']], done: true, wrongMark: false },
+  { id: 4, headword: 'pulcherrimus, pulcherrima, pulcherrimum', meanings: [['sehr schön', 'wunderschön', 'allerschönster'], ['der (die, das) schönste']], done: false, wrongMark: true },
+];
+const wordsPanel = (over: Partial<Parameters<typeof WordsPanel>[0]>) => (
+  <WordsPanel words={sampleWords} total={sampleWords.length} query="" edit={null} onQuery={noop} onToggleDone={noop} onEdit={noop} onChangeEdit={noop} onSave={noop} onCancel={noop} {...over} />
+);
+
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <Box component="section" sx={{ mb: 4 }}>
@@ -63,11 +77,39 @@ function Frame() {
   );
 }
 
+/** The states of the Wrong, Words and Settings tabs (also alone at #/dev/m7, for screenshots). */
+const m7 = (
+  <>
+        <Section title="Wrong words"><WrongPanel words={sampleWords.filter((w) => w.wrongMark)} onRetest={noop} /></Section>
+        <Section title="Wrong words, none"><WrongPanel words={[]} onRetest={noop} /></Section>
+        <Section title="Words">{wordsPanel({})}</Section>
+        <Section title="Words, searched">{wordsPanel({ words: sampleWords.slice(0, 1), query: 'TAUR' })}</Section>
+        <Section title="Words, nothing found">{wordsPanel({ words: [], query: 'zzz' })}</Section>
+        <Section title="Words, editing">{wordsPanel({ edit: editOf(sampleWords[1]!) })}</Section>
+        <Section title="Words, editing with an error">
+          {wordsPanel({ edit: { ...editOf(sampleWords[1]!), headword: 'taurus', error: 'Another word is already called "taurus".' } })}
+        </Section>
+        <Section title="Settings"><SettingsPanel value="20" error={null} saved={false} saving={false} onChange={noop} onSave={noop} /></Section>
+        <Section title="Settings, saved"><SettingsPanel value="50" error={null} saved saving={false} onChange={noop} onSave={noop} /></Section>
+        <Section title="Settings, invalid"><SettingsPanel value="201" error="Enter a whole number from 1 to 200." saved={false} saving={false} onChange={noop} onSave={noop} /></Section>
+  </>
+);
+
 export function Gallery() {
   const route = window.location.hash.replace(/^#\/dev\/?/, '');
   if (route === 'nodb') return (<><Frame /><NoDbDialog open onClose={noop} /></>);
   if (route === 'done3') return (<><Frame /><Done3Dialog open headword="taurus" onAnswer={noop} /></>);
   if (route === 'switch') return (<><Frame /><SwitchDbDialog open onCancel={noop} onSwitch={noop} /></>);
+
+  if (route === 'words-edit')
+    return (
+      <Box sx={{ p: 0, maxWidth: 900, mx: 'auto' }}>
+        <Section title="Words, editing with an error">
+          {wordsPanel({ edit: { ...editOf(sampleWords[1]!), headword: 'taurus', error: 'Another word is already called "taurus".' } })}
+        </Section>
+      </Box>
+    );
+  if (route === 'm7') return <Box sx={{ p: 2, maxWidth: 900, mx: 'auto' }}>{m7}</Box>;
 
   const start = (over: Partial<Parameters<typeof StartScreen>[0]>) => (
     <StartScreen databases={dbs} loadError={null} selected="latin.db" starting={false} onSelect={noop} onStart={noop} onRetry={noop} {...over} />
@@ -100,6 +142,7 @@ export function Gallery() {
       <Section title="Quiz: nothing to retest"><EmptyPoolNotice retest onBack={noop} /></Section>
       <Section title="Quiz: no words available"><EmptyPoolNotice retest={false} onBack={noop} /></Section>
       <Section title="Quiz: all words done"><AllDoneNotice /></Section>
+      {m7}
       <Section title="Frame"><Frame /></Section>
       <Section title="Frame, long database name">
         <TopBar language="latin" db="latin_vocabulary_for_the_second_semester_2026.db" onSwitchDb={noop} />
