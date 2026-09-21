@@ -59,7 +59,7 @@ const scheme = (t: Scheme) => ({
   },
 });
 
-export const UI_FONT = 'system-ui, -apple-system, "Segoe UI", sans-serif';
+export const UI_FONT = '"Noto Sans KR", system-ui, -apple-system, "Segoe UI", "Malgun Gothic", sans-serif';
 /** For headwords and the brand: it has the macrons that Latin needs. */
 export const WORD_FONT = '"EB Garamond", "Iowan Old Style", Georgia, serif';
 export const MONO_FONT = '"IBM Plex Mono", ui-monospace, Consolas, monospace';
