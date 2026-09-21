@@ -7,7 +7,7 @@ export default defineConfig({
       {
         test: {
           name: 'server',
-          include: ['test/*.test.ts', 'test/{shared,server,cli}/**/*.test.ts'],
+          include: ['test/*.test.ts', 'test/{shared,server,cli,release}/**/*.test.ts'],
           environment: 'node',
           // node:sqlite prints an ExperimentalWarning on every load
           execArgv: ['--disable-warning=ExperimentalWarning'],
