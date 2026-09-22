@@ -17,6 +17,7 @@
     "smoke:win-db": "bash scripts/win-db-check.sh",
     "smoke:import": "bash scripts/import-e2e.sh",
     "smoke:server": "bash scripts/server-e2e.sh",
+    "smoke:package": "bash scripts/package-e2e.sh",
     "dev": "node scripts/dev.mjs",
     "dev:seed": "node scripts/dev.mjs --seed",
     "shots": "bash scripts/shots.sh"
