@@ -197,6 +197,8 @@
 | 배포 | 사용자가 승인하면 실제 `C:\WordQuiz`에 배포한다. 이때도 기존 `data\`는 보존한다 |
 | 커밋 제안 | `docs: Add README` / `docs: Add requirements traceability` |
 
+**M9 진행 메모 (2026-09-22)**: 완료 기준 ①(3장 자동 검증 전 항목)과 ③(추적표, 4.4)까지 마쳤다. `README.md`(④) 작성 완료(설치, 첫 실행, 단어장 다시 가져오기, 백업, 휴대폰 접속, 서버 옵션, 문제 해결). **남은 것은 ②(3.3 수동 체크리스트, 사용자가 실제 Windows·휴대폰에서 수행) 및 결과 기록, 그리고 사용자 승인 후 실제 `C:\WordQuiz` 배포**다.
+
 ---
 
 ## 3. Windows 검증 계획
@@ -239,7 +241,7 @@ powershell.exe -NoProfile -Command "Stop-Process -Id $WINPID -Force"   # server.
 | 서버 종단 | `npm run smoke:server`: import한 실제 DB로 서버를 띄워 HTTP로 세션·라운드·채점·오답 목록·새로고침 이어가기, 다른 Host 403·JSON 아님 415·포트 충돌, Linux `SIGTERM` 종료, **Windows 강제 종료 후 재기동 시 세션 보정**(TECH-SPEC 14.7) | Linux·Windows 모두 통과 |
 | import CLI 종단 | `npm run smoke:import`: 실제 샘플로 검증 → 적재 → 재검증(전부 변경 없음) → 한 셀 변경 → 갱신·백업(`VACUUM INTO`) → 대소문자 이름 충돌 거부, UTF-8 리포트(TECH-SPEC 14.6) | Linux·Windows 모두 통과 |
 | DB 계층 동작 | `npm run smoke:win-db`: 같은 검사를 Linux와 `node.exe`에서 실행(대소문자 이름 충돌 거부, 열린 DB 삭제·이름 변경 차단, 부속 파일 없음 등, TECH-SPEC 14.5) | 양쪽 모두 통과 |
-| 파일 호환 | Windows에서 만든 DB를 WSL에서 **읽기 전용·순차**로 열고, 그 반대도 확인. **같은 DB를 동시에 열지 않는다**(`/mnt/c` 잠금 불안정, TECH-SPEC 8.5) | 양쪽에서 읽힘 |
+| 파일 호환 | `npm run smoke:win-db`의 "Cross-platform" 절(`test/support/cross-db-check.ts`): Windows에서 만든 DB를 WSL에서 **읽기 전용·순차**로 열고, 그 반대도 확인. **같은 DB를 동시에 열지 않는다**(`/mnt/c` 잠금 불안정, TECH-SPEC 8.5) | 양쪽에서 읽힘(장음 기호 보존) |
 | 배포 잠금 | 서버 기동(`server.lock` 생성) 후 `deploy` 실행 | 중단 메시지 출력, `--force`로만 진행 |
 | 줄바꿈 | 배포된 `.bat` 검사 | 모든 줄 CRLF, BOM 없음 |
 
@@ -298,6 +300,9 @@ powershell.exe -NoProfile -Command "Stop-Process -Id $WINPID -Force"   # server.
 | 9 | 보안 | M4 |
 | 10 | 테스트 전략 | 전 마일스톤, Windows 항목은 3장 |
 | 11 | 위험 요소 | 5장 |
+
+### 4.4 추적표 확정 (2026-09-22, M9)
+M0~M8이 모두 끝나 위 표의 마일스톤 칸은 전부 채워졌다. **자동으로 검증 가능한 모든 항목은 3장의 자동 검증(`smoke:*` 전부, 통합 1063개 테스트)을 통과했다.** 자동으로 확인할 수 없는 항목은 3.3 수동 체크리스트로 남아 있다: G2(더블클릭 실행 체감), 5.8 실제 휴대폰(자동 고침·대문자 미간섭, PC·휴대폰 세션 전환), 6(콘솔 창 닫기·방화벽 프롬프트). 이 항목들은 사용자가 3.3을 수행하고 결과를 기록해야 추적표가 완전히 확정된다(완료 기준 ②③).
 
 ---
 

@@ -623,7 +623,7 @@ node --disable-warning=ExperimentalWarning "%~dp0import.mjs" %*
 | **파일명 대소문자** | Windows는 대소문자를 구분하지 않고 Linux는 구분한다. **실측: Windows에서 `Latin.db` 뒤에 `latin.db`를 쓰면 같은 파일이 덮어써진다** | DB 이름 중복 검사는 대소문자 무시 (T13). 경로는 `path.join`과 `fileURLToPath`를 쓰고 `/`나 `\\`를 하드코딩하지 않는다 |
 | **실행 중인 스크립트** | 실행 중인 `server.mjs`는 **잠기지 않아 덮어쓰기가 허용**된다. 다만 실행 중인 서버는 **옛 코드를 메모리에** 두고 있어 새 `public/`과 어긋난다 | 서버가 `server.lock`을 만들고 종료 시 지운다. `deploy`는 lock이 있으면 "서버를 먼저 종료하세요"로 중단하고 `--force`로만 진행한다 (T16). 비정상 종료로 남은 lock은 서버가 다음 기동 때 덮어쓴다 |
 | **열린 DB 파일** | 서버가 연 SQLite 파일은 **삭제·이름 변경이 차단**된다(`Permission denied`). **복사는 허용**된다 | 자동 백업(T12)은 파일 복사라 서버 실행 중에도 동작한다. 테스트와 스크립트는 DB를 `close()`한 뒤에 지운다. `deploy`는 `data/`를 건드리지 않는다 |
-| **OS를 넘나드는 DB 접근** | `/mnt/c`(WSL에서 본 Windows 파일)는 SQLite 잠금이 불안정할 수 있다 | WSL에서 Windows 쪽 DB를 열 때는 **읽기 전용, 순차 접근**만 한다. 같은 DB를 WSL과 Windows가 **동시에** 열지 않는다. 자동 검증은 이 규칙을 따른다 |
+| **OS를 넘나드는 DB 접근** | `/mnt/c`(WSL에서 본 Windows 파일)는 SQLite 잠금이 불안정할 수 있다 | WSL에서 Windows 쪽 DB를 열 때는 **읽기 전용, 순차 접근**만 한다. 같은 DB를 WSL과 Windows가 **동시에** 열지 않는다. 자동 검증(`npm run smoke:win-db`의 "Cross-platform" 절, M9)이 이 규칙을 따라 양방향 왕복을 확인한다 |
 | **휴대폰 접속 검증** | WSL은 NAT라 휴대폰에서 직접 닿지 않는다. Windows의 `curl.exe`는 WSL 서버의 `localhost`에 접속된다 | 휴대폰 접속은 **Windows에 배포한 서버**로만 확인한다. Windows 브라우저에서 WSL의 Vite dev 서버를 보는 것은 가능하다 |
 
 ---
