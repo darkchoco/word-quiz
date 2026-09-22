@@ -579,6 +579,7 @@ C:\WordQuiz\
 └─ reports\           import 리포트
 ```
 - `WordQuiz.zip`에는 `start.bat`, `import.bat`, `server.mjs`, `import.mjs`, `public\`만 넣는다. `data\`와 `reports\`는 첫 실행 때 만든다.
+- **`dist/`가 곧 배포 폴더다** (M8). `build.mjs`는 esbuild·Vite 번들뿐 아니라 `release/*.bat`도 CRLF·BOM 없는 UTF-8로 변환해 `dist/`에 쓴다(`scripts/lib/release.mjs`의 `toCrlf`). `package`(→ `release/WordQuiz.zip`)와 `deploy`는 이 `dist/`만 읽어서, 두 스크립트가 항상 같은 파일 목록(`collectRelease`: `start.bat`, `import.bat`, `server.mjs`, `import.mjs` + `public/` 전체)을 배포한다. 실제 크기는 27개 파일, 약 3.7MB(폰트 조각 포함).
 
 ### 8.2 `start.bat`
 ```bat
@@ -587,9 +588,10 @@ chcp 65001 >nul
 cd /d "%~dp0"
 where node >nul 2>nul || (echo Node.js was not found. Please install Node.js 22.13 or later. & pause & exit /b 1)
 node -e "const [a,b]=process.versions.node.split('.').map(Number);process.exit(a>22||(a===22&&b>=13)?0:1)" || (echo Node.js 22.13 or later is required. Current: & node -v & pause & exit /b 1)
-node --disable-warning=ExperimentalWarning server.mjs
+node --disable-warning=ExperimentalWarning server.mjs %*
 pause
 ```
+- `%*`는 `start.bat`에 준 인자를 그대로 서버에 넘긴다(M8에서 계획에 추가; 예: `start.bat --local-only`, 자동 검증의 `--no-open --port <n>`).
 - 서버가 **`listen`에 성공한 뒤** 기본 브라우저를 연다(`cmd /c start "" http://localhost:35000`). 배치 파일에서 미리 여는 방식은 서버 준비 전에 접속하는 경합이 생겨 쓰지 않는다. 개발 중에는 `--no-open`으로 끈다.
 - 포트는 `35000`, 환경변수 `PORT`로 변경할 수 있다.
 - **포트 사용 중**(`EADDRINUSE`)이면 "이미 실행 중일 수 있습니다" 메시지를 출력하고 브라우저만 열고 종료한다.
@@ -846,6 +848,23 @@ node --disable-warning=ExperimentalWarning "%~dp0import.mjs" %*
 - **자동 테스트**: 클라이언트 37개 추가(전체 1006개, 45파일). 결함 주입 22가지(오답 4, 단어 관리 11, 설정 7)를 모두 즉시 검출했다. jsdom은 `type=number`에 `1e2`를 넣으면 `"100"`으로 바꿔 버려 이 입력은 자동 테스트에서 뺐다(실제 브라우저는 `"1e2"`를 돌려주고 정규식이 거부한다).
 - **실제 서버 확인**: 문제 수를 3으로 저장 → 라운드 시작 → 출제된 단어의 뜻을 `PATCH`로 바꾸고 새 뜻으로 답하면 `perfect`. 서버를 재시작해도 바뀐 뜻과 문제 수(37로 다시 확인)가 남는다. `smoke:server` 51/51 유지(서버 변경 없음).
 - **발견한 문제**: (1) 390px에서 표의 Done·Edit 열이 화면 밖이라 옆으로 스크롤해야 했다 → 좁은 화면 규칙 추가. (2) 편집 행을 CSS로 세로 배치하면 입력창이 첫 열 너비에 갇혔다 → `colSpan` 셀로 변경. (3) 표제어 입력창의 u→v 문제(위 규칙). 갤러리(`#/dev/m7`, `#/dev/words-edit`)로 세 화면의 상태를 모아 찍었다.
+
+### 14.11 M8 번들 · 패키징 · 배포 확인 (2026-09-22, `npm run smoke:package`)
+완료 기준 ①~⑦을 모두 자동으로 확인했다. ①`npm run build`가 `dist/`에 `server.mjs`·`import.mjs`·`public/`·`.bat` 2개를 남긴다. ④⑤는 `test/release/start-bat.test.ts`가 버전 검사 스니펫을 `vm`으로 단위 실행해 `22.12.0` 거부, `22.13.0`·`24.14.0` 통과를 확인한다(이 PC의 실제 Windows Node는 24.14라 22.13 경계 자체는 여기서 실행할 수 없다). 새로 만든 `scripts/package-e2e.sh`(`npm run smoke:package`, 35개 검사, Linux+Windows)가 ②③⑥⑦을 종단으로 확인한다.
+
+| 확인한 것 | 결과 |
+|-----------|------|
+| `npm run package`가 만든 `release/WordQuiz.zip`의 목록(`start.bat`, `import.bat`, `server.mjs`, `import.mjs`, `public/index.html` 등, `data/`·`reports/`·`node_modules`·`server.lock` 없음) | 통과 |
+| zip을 `node_modules` 없는 새 폴더에 풀어 서버 기동 → `GET /api/databases`(`{"databases":[]}`) · `GET /`(HTML) · `server.lock` 생성 (**②**) | 통과 |
+| `deploy`를 같은 대상에 **두 번** 실행해도 `data/`의 DB와 `reports/`의 체크섬이 그대로 (**③**) | 통과 |
+| 배포된 `start.bat`·`import.bat`의 모든 줄이 CRLF, BOM 없음 (**⑥**) | 통과 |
+| Windows: `cmd.exe /c start.bat --no-open --port <n> < NUL`로 실제 배치 파일을 실행 → 서버 기동 → 서버가 떠 있는 동안 `deploy`는 잠금으로 **종료 코드 1**, `--force`는 진행하고 서버는 계속 응답 (**⑦**) | 통과 |
+| Windows: `cmd.exe /c import.bat words.xlsx --new-db … --report …`(검증 모드)가 실제 샘플 178단어를 찾음 | 통과 |
+
+- **자동 테스트**: `test/release/{start-bat,release-lib,package,deploy}.test.ts` 57개 추가(전체 **1063개/49파일**). 결함 주입은 `start.bat` 8가지, `release.mjs` 5가지, `package`/`deploy` 12가지 중 11가지 즉시 검출(1건은 죽은 코드 `mkdirSync(target)`라 삭제로 대응).
+- **발견한 문제**: `start.bat`은 `cd /d "%~dp0"` 뒤 `server.mjs`를 **상대 경로**로 실행하므로, Windows 프로세스 목록의 `CommandLine`에는 배포 폴더 이름이 나타나지 않는다(기존 스모크들이 쓰던 `CommandLine`의 폴더 이름 매칭이 여기서는 안 통함). `smoke:package`는 대신 `server.lock`의 `pid` 필드로 정확히 그 프로세스만 종료한다.
+- **계획 대비 변경**: 실행 계획은 `start.bat`에 `%*`가 없었다 → 인자 전달과 자동 검증의 `--no-open` 전달을 위해 추가했다. 커밋 순서를 계획(`build` 먼저)과 달리 `start.bat → build → package/deploy`로 바꿨다(`build`가 `start.bat`을 복사하는 의존 관계 때문). `dist/`를 배포 폴더로 삼아 `build`·`package`·`deploy`가 같은 파일 목록을 쓰게 했다(8.1).
+- **참고**: zip에는 최신 브라우저에 불필요한 구형 브라우저용 `.woff`(EB Garamond·IBM Plex Mono·Noto Sans KR)가 `.woff2`와 함께 10개 들어 있어 크기가 다소 크다(3.68MB, 27파일). 빼면 작아지지만 `@fontsource`의 기본 산출물이라 필수는 아니며, 원하면 별도 작업으로 처리한다.
 
 ---
 

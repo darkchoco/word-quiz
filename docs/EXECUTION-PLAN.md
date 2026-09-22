@@ -28,8 +28,8 @@
 | M4 | 서버 서비스와 API | L | [x] 2026-09-20 |
 | M5 | 클라이언트 골격 · 시작 · 공통 | M | [x] 2026-09-20 |
 | M6 | 클라이언트 퀴즈 흐름 | L | [x] 2026-09-20 |
-| M7 | 클라이언트 오답 · 단어 관리 · 설정 | M | [x] 2026-09-21 (전체 UI 컨펌 대기) |
-| M8 | 번들 · 패키징 · 배포 | M | [ ] |
+| M7 | 클라이언트 오답 · 단어 관리 · 설정 | M | [x] 2026-09-21 |
+| M8 | 번들 · 패키징 · 배포 | M | [x] 2026-09-22 |
 | M9 | 최종 검증 · 문서 | M | [ ] |
 
 의존 관계: `M0 → (M1 ∥ M2) → M3, M4 → M5 → M6 → M7 → M8 → M9` (M3과 M4는 둘 다 M1·M2가 끝나야 시작하며 서로는 독립이다).
@@ -184,6 +184,11 @@
 | 검증 | `npm run build && npm run package`, 스모크 스크립트, `deploy` 후 파일 목록 비교 |
 | 커밋 제안 | `feat: Add production build` / `feat: Add package and deploy scripts` / `feat: Add start.bat launcher` |
 
+**M8 결과 (2026-09-22)**: 완료 기준 ①~⑦ 모두 충족(자동 검증, TECH-SPEC 14.11 참고). 커밋 4개(`feat: Add start.bat launcher`, `feat: Add production build`, `feat: Add package and deploy scripts`, `test: Add package smoke check`). 자동 테스트 57개 추가(전체 **1063개/49파일**), 새 종단 스모크 `scripts/package-e2e.sh`(`npm run smoke:package`, 35개 검사, Linux+Windows)가 ②③⑥⑦을 실제 `npm run package`/`deploy`와 `cmd.exe /c start.bat`/`import.bat` 실행으로 확인. 회귀(`smoke:server` 51, `smoke:win` 24, `smoke:win-db` 20, `smoke:import` 63) 모두 통과.
+- **계획 대비 변경**: `start.bat`에 `%*`(인자 전달)를 추가했다(계획에 없었음; `--local-only` 같은 옵션과 자동 검증의 `--no-open` 전달에 필요). 커밋 순서를 계획(`build` 먼저)과 달리 `start.bat → build → package/deploy`로 바꿨다(`build`가 `dist/`에 `.bat`을 복사하므로 그게 먼저 있어야 함). **`dist/`를 배포 폴더로 삼아** `build`·`package`·`deploy`가 모두 같은 파일 목록(`scripts/lib/release.mjs`의 `collectRelease`)을 쓰게 했다.
+- **발견한 문제**: `start.bat`은 `server.mjs`를 상대 경로로 실행해 Windows 프로세스의 `CommandLine`에 배포 폴더 이름이 남지 않는다. 기존 스모크들의 "`CommandLine`으로 자기가 띄운 것만 종료" 관례가 여기서는 안 통해서, `smoke:package`는 대신 `server.lock`의 `pid`로 정확히 종료한다.
+- **사용자에게 알릴 것**: zip에 구형 브라우저용 `.woff`가 `.woff2`와 함께 10개 들어 있어 3.68MB(27파일)로 다소 크다. `@fontsource`의 기본 산출물이라 필수는 아니고, 원하면 별도 작업으로 뺄 수 있다.
+
 ### M9. 최종 검증 · 문서 (M)
 | 구분 | 내용 |
 |------|------|
@@ -213,13 +218,14 @@
 **한계**: 이 PC의 Windows Node는 24.14이므로 **스펙의 최소 버전 22.13은 여기서 검증할 수 없다.** 사용자 PC의 Node 버전 확인은 수동 항목이다.
 
 ### 3.2 자동 검증 (WSL → `node.exe`)
+`npm run smoke:package`(M8, `scripts/package-e2e.sh`)가 실제로 쓰는 방식이다. `start.bat`을 거치면 `server.mjs`가 **상대 경로**로 실행돼 `CommandLine`에 배포 폴더 이름이 남지 않으므로, 정리는 `server.lock`의 `pid`로 한다:
 ```bash
-NODE_WIN=/mnt/d/tools/nodejs/node.exe
-DEV=/mnt/c/WordQuiz-dev
-DEPLOY_DIR=$DEV npm run deploy
-"$NODE_WIN" --disable-warning=ExperimentalWarning "$(wslpath -w $DEV/server.mjs)" --no-open &
+DEV=/mnt/c/WordQuiz-dev/package-e2e
+node scripts/deploy.mjs --dir "$DEV"                  # dist/를 그대로 배포
+( cd "$DEV" && cmd.exe /c "start.bat --no-open --port 35000 < NUL" ) &   # < NUL: 마지막 pause가 안 막히게
 curl.exe -s http://localhost:35000/api/databases      # WSL curl 대신 curl.exe
-# 정리: 이 스크립트가 띄운 프로세스만 CommandLine으로 찾아 종료한다 (다른 node.exe는 건드리지 않는다)
+WINPID=$(grep -o '"pid":[0-9]*' "$DEV/server.lock" | cut -d: -f2)
+powershell.exe -NoProfile -Command "Stop-Process -Id $WINPID -Force"   # server.lock의 pid만 정확히 종료
 ```
 
 | 항목 | 방법 | 통과 기준 |
@@ -229,7 +235,7 @@ curl.exe -s http://localhost:35000/api/databases      # WSL curl 대신 curl.exe
 | 포트 중복 | 같은 포트로 두 번째 `node.exe` 기동 | 안내 메시지 출력 후 종료 코드 확인 |
 | 강제 종료 후 복구 | 세션 시작 → `Stop-Process -Force` → 재기동 후 같은 DB 시작 | 이전 세션 `ended_at`이 `last_seen_at`으로 채워짐 |
 | UTF-8 | `import.bat`(또는 `cmd.exe /c chcp 65001 ...`)의 출력을 **파일로 리다이렉트**해 바이트 확인 | 장음 기호(`ā ē ī ō ū`)·움라우트가 깨지지 않음 |
-| 배포 스크립트 | `deploy` 두 번 실행 | `data/`·`reports/` 보존 |
+| 배포·패키징 종단 | `npm run smoke:package`: zip 목록 → node_modules 없는 폴더에 풀어 서버 기동 → `deploy` 두 번 → Windows에서 `start.bat`/`import.bat` 실제 실행, 서버 실행 중 `deploy` 잠금·`--force`(TECH-SPEC 14.11) | Linux·Windows 모두 통과, `data/`·`reports/` 보존, `.bat` CRLF·BOM 없음 |
 | 서버 종단 | `npm run smoke:server`: import한 실제 DB로 서버를 띄워 HTTP로 세션·라운드·채점·오답 목록·새로고침 이어가기, 다른 Host 403·JSON 아님 415·포트 충돌, Linux `SIGTERM` 종료, **Windows 강제 종료 후 재기동 시 세션 보정**(TECH-SPEC 14.7) | Linux·Windows 모두 통과 |
 | import CLI 종단 | `npm run smoke:import`: 실제 샘플로 검증 → 적재 → 재검증(전부 변경 없음) → 한 셀 변경 → 갱신·백업(`VACUUM INTO`) → 대소문자 이름 충돌 거부, UTF-8 리포트(TECH-SPEC 14.6) | Linux·Windows 모두 통과 |
 | DB 계층 동작 | `npm run smoke:win-db`: 같은 검사를 Linux와 `node.exe`에서 실행(대소문자 이름 충돌 거부, 열린 DB 삭제·이름 변경 차단, 부속 파일 없음 등, TECH-SPEC 14.5) | 양쪽 모두 통과 |
